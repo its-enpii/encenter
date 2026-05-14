@@ -8,8 +8,6 @@ use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      */
@@ -17,9 +15,12 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        \App\Models\User::create([
+            'name' => 'Admin EnCenter',
+            'email' => 'admin@encenter.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('password'),
+            'phone_number' => '628123456789',
+            'is_active' => true,
         ]);
     }
 }

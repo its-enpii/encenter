@@ -514,17 +514,17 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 **Goal: Laravel API + Next.js terhubung ke Supabase, autentikasi berfungsi**
 
-- [ ] Setup project Laravel 11
-- [ ] Konfigurasi koneksi Supabase (PostgreSQL via `pgsql` driver)
-- [ ] Buat semua migrasi tabel
-- [ ] Install & konfigurasi Laravel Sanctum
-- [ ] Buat endpoint Auth (login, logout, me, update profile)
-- [ ] Buat `EncryptionService` — wrapper enkripsi/dekripsi field sensitif
-- [ ] Setup middleware: auth check, activity logger
-- [ ] Setup Redis untuk queue
-- [ ] Setup project Next.js 14 (App Router)
-- [ ] Halaman login + session management di Next.js
-- [ ] Deploy keduanya ke VPS
+- [x] Setup project Laravel 11
+- [x] Konfigurasi koneksi Supabase (PostgreSQL via `pgsql` driver)
+- [x] Buat semua migrasi tabel
+- [x] Install & konfigurasi Laravel Sanctum
+- [x] Buat endpoint Auth (login, logout, me, update profile)
+- [x] Buat `EncryptionService` — wrapper enkripsi/dekripsi field sensitif
+- [x] Setup middleware: auth check, activity logger
+- [x] Setup Redis untuk queue
+- [x] Setup project Next.js 14 (App Router)
+- [x] Halaman login + session management di Next.js
+- [x] Deploy keduanya ke VPS
 
 **Deliverable:** Bisa login via web dan dapat token ✓
 

@@ -37,6 +37,8 @@ services:
       - /app/.next
     environment:
       - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     networks:
       - agent-network
 
