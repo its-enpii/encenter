@@ -1,0 +1,48 @@
+# Common
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+*.log
+
+# Infrastructure
+openclaw/config/
+n8n/data/
+evolution/instances/
+evolution/postgres/
+
+# Backend (Laravel)
+website/backend/.phpunit.result.cache
+website/backend/.phpactor.json
+website/backend/.phpunit.cache
+website/backend/node_modules/
+website/backend/vendor/
+website/backend/public/build/
+website/backend/public/hot/
+website/backend/public/storage
+website/backend/storage/*.key
+website/backend/storage/pail/
+website/backend/Homestead.json
+website/backend/Homestead.yaml
+website/backend/_ide_helper.php
+
+# Frontend (Next.js)
+website/frontend/node_modules/
+website/frontend/.pnp
+website/frontend/.pnp.*
+website/frontend/.next/
+website/frontend/.pnpm-store/
+website/frontend/out/
+website/frontend/build/
+website/frontend/.vercel
+website/frontend/*.tsbuildinfo
+website/frontend/next-env.d.ts
+
+# IDEs
+.idea/
+.vscode/
+.zed/
+.nova/
+.cursor/
+.codex/

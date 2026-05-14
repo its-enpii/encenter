@@ -1,0 +1,120 @@
+services:
+  website-backend:
+    build: ./website/backend
+    container_name: encenter-backend
+    restart: unless-stopped
+    volumes:
+      - ./website/backend:/var/www/html
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    networks:
+      - agent-network
+
+  website-nginx:
+    image: nginx:alpine
+    container_name: encenter-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./website/backend:/var/www/html
+      - ./website/backend/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - website-backend
+    networks:
+      - agent-network
+
+  website-frontend:
+    build: ./website/frontend
+    container_name: encenter-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./website/frontend:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+    networks:
+      - agent-network
+
+  openclaw:
+    build: ./openclaw
+    container_name: encenter-openclaw
+    restart: unless-stopped
+    environment:
+      - PI_AI_ANTIGRAVITY_VERSION=1.25.0
+    volumes:
+      - ./openclaw/config:/root/.openclaw
+      - ./openclaw/workspace:/root/.openclaw/workspace
+    networks:
+      - agent-network
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: encenter-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=${N8N_HOST}
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=${N8N_PROTOCOL}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - GENERIC_TIMEZONE=Asia/Jakarta
+      - N8N_COMMUNITY_PACKAGES_ENABLED=true
+    volumes:
+      - ./n8n/data:/home/node/.n8n
+    networks:
+      - agent-network
+
+  postgres:
+    image: postgres:15
+    container_name: evolution-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolution
+      POSTGRES_DB: evolution
+    volumes:
+      - ./evolution/postgres:/var/lib/postgresql/data
+    networks:
+      - agent-network
+
+  redis:
+    image: redis:7
+    container_name: evolution-redis
+    restart: unless-stopped
+    networks:
+      - agent-network
+
+  evolution-api:
+    image: evoapicloud/evolution-api:latest
+    container_name: encenter-evolution
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
+      - N8N_ENABLED=true
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evolution:evolution@postgres:5432/evolution
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+    volumes:
+      - ./evolution/instances:/evolution/instances
+    networks:
+      - agent-network
+
+networks:
+  agent-network:
+    driver: bridge
+    name: agent-network
