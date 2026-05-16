@@ -1,6 +1,9 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api/v1';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
-export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+export async function apiFetch(endpoint: string, options: any = {}) {
+    const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+    
+    // Get token from localStorage if exists
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
     const headers = {
@@ -10,20 +13,18 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         ...options.headers,
     };
 
-    const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    
     try {
         const response = await fetch(url, {
             ...options,
-            headers: {
-                ...headers,
-                ...options.headers,
-            },
+            headers,
         });
 
-        if (response.status === 401 && typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
-            window.location.href = '/login';
+        if (response.status === 401) {
+            // Handle unauthorized (redirect to login or refresh token)
+            if (typeof window !== 'undefined') {
+                // localStorage.removeItem('auth_token');
+                // window.location.href = '/auth/login';
+            }
         }
 
         return response;
@@ -32,4 +33,4 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
         console.error(`[API Fetch Error] Failed to connect to ${url}:`, error);
         throw error;
     }
-};
+}

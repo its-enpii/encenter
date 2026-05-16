@@ -11,6 +11,21 @@ services:
     networks:
       - agent-network
 
+  website-worker:
+    build: ./website/backend
+    container_name: encenter-worker
+    restart: unless-stopped
+    command: php artisan queue:work --verbose --tries=3 --timeout=600
+    volumes:
+      - ./website/backend:/var/www/html
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+    depends_on:
+      - website-backend
+    networks:
+      - agent-network
+
   website-nginx:
     image: nginx:alpine
     container_name: encenter-nginx
@@ -39,7 +54,7 @@ services:
       - NODE_ENV=development
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
-      - NEXT_PUBLIC_API_URL=http://127.0.0.1:8000/api/v1
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     networks:
       - agent-network
 

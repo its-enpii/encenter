@@ -60,7 +60,7 @@ export default function ServersPage() {
           message: data.message || "The secure vault has established a handshake with the remote node.",
           variant: "success"
         });
-        setRefreshKey(prev => prev + 1); // Refresh to update "Last Sync"
+        setRefreshKey(prev => prev + 1);
       } else {
         setTestResult({
           open: true,
@@ -193,7 +193,7 @@ export default function ServersPage() {
 
       <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
         <SmartTable<Server>
-          fetchUrl="/api/v1/servers"
+          fetchUrl="/servers" 
           columns={columns}
           searchPlaceholder="Search servers by label or IP..."
           refreshKey={refreshKey}

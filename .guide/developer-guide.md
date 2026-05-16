@@ -20,6 +20,7 @@
 ## 1. Overview & Arsitektur
 
 **Server Control Center** adalah aplikasi internal self-hosted yang berfungsi sebagai:
+
 - **Credential Vault** — menyimpan kredensial SSH dan database seluruh server secara terenkripsi
 - **Backup Engine** — menjalankan backup database MySQL/MariaDB via SSH tunnel ke server target
 - **Cloud Storage Bridge** — menyimpan file backup ke Google Drive secara otomatis
@@ -105,18 +106,18 @@ n8n terima webhook → kirim WhatsApp ke phone_number
 
 ## 2. Tech Stack
 
-| Layer | Teknologi | Keterangan |
-|---|---|---|
-| Frontend | Next.js 14 (App Router) | Web dashboard, SSR |
-| UI Components | Shadcn/ui + Tailwind CSS | Komponen siap pakai |
-| Backend API | Laravel 11 | Framework utama, queue, webhook |
-| Database | Supabase (PostgreSQL) | Managed DB, auto-backup, RLS |
-| Auth | Laravel Sanctum | Session & API token |
-| SSH Connection | phpseclib/phpseclib | Pure PHP SSH2, tanpa ekstensi C |
-| Backup Storage | Google Drive API v3 | OAuth2, upload file .sql.gz |
-| Queue | Laravel Queue + Redis | Async backup job |
-| Enkripsi | Laravel Encryption (AES-256-CBC) | Enkripsi kredensial di DB |
-| Deployment | Docker / native VPS | Self-hosted di VPS pribadi |
+| Layer          | Teknologi                        | Keterangan                      |
+| -------------- | -------------------------------- | ------------------------------- |
+| Frontend       | Next.js 14 (App Router)          | Web dashboard, SSR              |
+| UI Components  | Shadcn/ui + Tailwind CSS         | Komponen siap pakai             |
+| Backend API    | Laravel 11                       | Framework utama, queue, webhook |
+| Database       | Supabase (PostgreSQL)            | Managed DB, auto-backup, RLS    |
+| Auth           | Laravel Sanctum                  | Session & API token             |
+| SSH Connection | phpseclib/phpseclib              | Pure PHP SSH2, tanpa ekstensi C |
+| Backup Storage | Google Drive API v3              | OAuth2, upload file .sql.gz     |
+| Queue          | Laravel Queue + Redis            | Async backup job                |
+| Enkripsi       | Laravel Encryption (AES-256-CBC) | Enkripsi kredensial di DB       |
+| Deployment     | Docker / native VPS              | Self-hosted di VPS pribadi      |
 
 ---
 
@@ -394,82 +395,82 @@ Auth: Bearer Token (Laravel Sanctum)
 
 ### 5.1 Auth
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| POST | `/auth/login` | Login, dapat token |
-| POST | `/auth/logout` | Revoke token aktif |
-| GET | `/auth/me` | Info user aktif |
-| PUT | `/auth/profile` | Update profil & phone_number |
+| Method | Endpoint        | Deskripsi                    |
+| ------ | --------------- | ---------------------------- |
+| POST   | `/auth/login`   | Login, dapat token           |
+| POST   | `/auth/logout`  | Revoke token aktif           |
+| GET    | `/auth/me`      | Info user aktif              |
+| PUT    | `/auth/profile` | Update profil & phone_number |
 
 ### 5.2 Server Groups
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/groups` | List semua group |
-| POST | `/groups` | Buat group baru |
-| PUT | `/groups/{id}` | Update group |
-| DELETE | `/groups/{id}` | Hapus group |
+| Method | Endpoint       | Deskripsi        |
+| ------ | -------------- | ---------------- |
+| GET    | `/groups`      | List semua group |
+| POST   | `/groups`      | Buat group baru  |
+| PUT    | `/groups/{id}` | Update group     |
+| DELETE | `/groups/{id}` | Hapus group      |
 
 ### 5.3 Servers
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/servers` | List semua server |
-| POST | `/servers` | Tambah server baru |
-| GET | `/servers/{id}` | Detail server (tanpa password) |
-| PUT | `/servers/{id}` | Update server |
-| DELETE | `/servers/{id}` | Hapus server |
-| POST | `/servers/{id}/test-ssh` | Test koneksi SSH |
+| Method | Endpoint                 | Deskripsi                      |
+| ------ | ------------------------ | ------------------------------ |
+| GET    | `/servers`               | List semua server              |
+| POST   | `/servers`               | Tambah server baru             |
+| GET    | `/servers/{id}`          | Detail server (tanpa password) |
+| PUT    | `/servers/{id}`          | Update server                  |
+| DELETE | `/servers/{id}`          | Hapus server                   |
+| POST   | `/servers/{id}/test-ssh` | Test koneksi SSH               |
 
 ### 5.4 Database Connections
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/servers/{id}/databases` | List DB di server |
-| POST | `/servers/{id}/databases` | Tambah koneksi DB |
-| GET | `/databases/{id}` | Detail koneksi DB |
-| PUT | `/databases/{id}` | Update koneksi DB |
-| DELETE | `/databases/{id}` | Hapus koneksi DB |
-| POST | `/databases/{id}/test` | Test koneksi DB via SSH |
+| Method | Endpoint                  | Deskripsi               |
+| ------ | ------------------------- | ----------------------- |
+| GET    | `/servers/{id}/databases` | List DB di server       |
+| POST   | `/servers/{id}/databases` | Tambah koneksi DB       |
+| GET    | `/databases/{id}`         | Detail koneksi DB       |
+| PUT    | `/databases/{id}`         | Update koneksi DB       |
+| DELETE | `/databases/{id}`         | Hapus koneksi DB        |
+| POST   | `/databases/{id}/test`    | Test koneksi DB via SSH |
 
 ### 5.5 Backup
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/backups` | History semua backup |
-| GET | `/databases/{id}/backups` | History backup per DB |
-| POST | `/databases/{id}/backup` | Trigger backup (manual / dari n8n) |
-| GET | `/backups/{id}` | Detail & status job backup |
-| DELETE | `/backups/{id}` | Hapus record backup |
+| Method | Endpoint                  | Deskripsi                          |
+| ------ | ------------------------- | ---------------------------------- |
+| GET    | `/backups`                | History semua backup               |
+| GET    | `/databases/{id}/backups` | History backup per DB              |
+| POST   | `/databases/{id}/backup`  | Trigger backup (manual / dari n8n) |
+| GET    | `/backups/{id}`           | Detail & status job backup         |
+| DELETE | `/backups/{id}`           | Hapus record backup                |
 
 > **Catatan untuk n8n:** Gunakan `POST /databases/{id}/backup` dengan Bearer Token khusus n8n.
 > Response langsung mengembalikan `backup_job_id`. Tunggu webhook dari Laravel untuk hasil akhirnya.
 
 ### 5.6 Webhook Settings
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/webhooks` | List webhook aktif |
-| POST | `/webhooks` | Tambah webhook baru |
-| PUT | `/webhooks/{id}` | Update webhook |
-| DELETE | `/webhooks/{id}` | Hapus webhook |
-| POST | `/webhooks/{id}/test` | Kirim test payload ke webhook URL |
+| Method | Endpoint              | Deskripsi                         |
+| ------ | --------------------- | --------------------------------- |
+| GET    | `/webhooks`           | List webhook aktif                |
+| POST   | `/webhooks`           | Tambah webhook baru               |
+| PUT    | `/webhooks/{id}`      | Update webhook                    |
+| DELETE | `/webhooks/{id}`      | Hapus webhook                     |
+| POST   | `/webhooks/{id}/test` | Kirim test payload ke webhook URL |
 
 ### 5.7 Google Drive
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/gdrive/auth` | Redirect ke Google OAuth |
-| GET | `/gdrive/callback` | OAuth callback handler |
-| GET | `/gdrive/status` | Cek status koneksi GDrive |
-| DELETE | `/gdrive/disconnect` | Cabut akses GDrive |
+| Method | Endpoint             | Deskripsi                 |
+| ------ | -------------------- | ------------------------- |
+| GET    | `/gdrive/auth`       | Redirect ke Google OAuth  |
+| GET    | `/gdrive/callback`   | OAuth callback handler    |
+| GET    | `/gdrive/status`     | Cek status koneksi GDrive |
+| DELETE | `/gdrive/disconnect` | Cabut akses GDrive        |
 
 ### 5.8 Activity Logs
 
-| Method | Endpoint | Deskripsi |
-|---|---|---|
-| GET | `/logs` | List activity log (paginated) |
-| GET | `/logs?resource={type}&resource_id={id}` | Filter per resource |
+| Method | Endpoint                                 | Deskripsi                     |
+| ------ | ---------------------------------------- | ----------------------------- |
+| GET    | `/logs`                                  | List activity log (paginated) |
+| GET    | `/logs?resource={type}&resource_id={id}` | Filter per resource           |
 
 ---
 
@@ -497,6 +498,7 @@ Payload yang dikirim Laravel ke n8n setelah backup selesai:
 ```
 
 Header untuk verifikasi di n8n:
+
 ```
 X-Webhook-Signature: hmac-sha256=<signature>
 X-Webhook-Event: backup.success
@@ -534,14 +536,14 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 **Goal: CRUD server & DB connection berfungsi dengan enkripsi, tampil di dashboard**
 
-- [ ] CRUD API `server_groups`, `servers`, `database_connections`
-- [ ] `EncryptionService` aktif di semua field sensitif
-- [ ] Endpoint test SSH dan test DB connection
-- [ ] Activity log otomatis setiap akses credential
-- [ ] Next.js: halaman daftar server + form tambah/edit
-- [ ] Next.js: halaman daftar database connection per server
-- [ ] Next.js: tombol "Test Connection" dengan feedback realtime
-- [ ] Next.js: halaman activity log
+- [x] CRUD API `server_groups`, `servers`, `database_connections`
+- [x] `EncryptionService` aktif di semua field sensitif
+- [x] Endpoint test SSH dan test DB connection
+- [x] Activity log otomatis setiap akses credential
+- [x] Next.js: halaman daftar server + form tambah/edit
+- [x] Next.js: halaman daftar database connection per server
+- [x] Next.js: tombol "Test Connection" dengan feedback realtime
+- [x] Next.js: halaman activity log
 
 **Deliverable:** Bisa simpan, lihat, dan test kredensial server via web ✓
 
@@ -551,21 +553,21 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 **Goal: Backup MySQL via SSH berjalan, file masuk Google Drive, tampil di dashboard**
 
-- [ ] Google Drive OAuth flow (auth + callback)
-- [ ] `GoogleDriveService` — upload, buat folder, hapus file
-- [ ] `RunBackupJob` (Laravel Queue):
+- [x] Google Drive OAuth flow (auth + callback)
+- [x] `GoogleDriveService` — upload, buat folder, hapus file
+- [x] `RunBackupJob` (Laravel Queue):
   - Decrypt kredensial
   - SSH ke server target via phpseclib
   - Eksekusi `mysqldump`
   - Compress ke `.sql.gz`
   - Upload ke Google Drive
   - Update status `backup_jobs`
-- [ ] Endpoint trigger backup (manual & dari n8n)
-- [ ] Endpoint history & detail backup
-- [ ] Next.js: tombol backup manual dengan status polling
-- [ ] Next.js: halaman history backup per database
-- [ ] Next.js: halaman setup Google Drive (connect / disconnect)
-- [ ] Test end-to-end: trigger via API → file muncul di Google Drive ✓
+- [x] Endpoint trigger backup (manual & dari n8n)
+- [x] Endpoint history & detail backup
+- [x] Next.js: tombol backup manual dengan status polling
+- [x] Next.js: halaman history backup per database
+- [x] Next.js: halaman setup Google Drive (connect / disconnect)
+- [x] Test end-to-end: trigger via API → file muncul di Google Drive ✓
 
 **Deliverable:** Backup berjalan via dashboard maupun API ✓
 
@@ -640,4 +642,4 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 ---
 
-*Dokumen ini adalah living document — update sesuai perkembangan pengerjaan.*
+_Dokumen ini adalah living document — update sesuai perkembangan pengerjaan._

@@ -1,0 +1,160 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Models\BackupJob;
+use App\Models\UserStorage;
+use App\Services\GoogleDriveService;
+use App\Services\SshService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Storage;
+use Exception;
+use Throwable;
+
+class RunBackupJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    protected $backupJob;
+    public $timeout = 0; // Unlimited timeout for massive databases
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct(BackupJob $backupJob)
+    {
+        $this->backupJob = $backupJob;
+    }
+
+    /**
+     * Execute the job.
+     */
+    public function handle(SshService $sshService, GoogleDriveService $googleDriveService): void
+    {
+        $startTime = microtime(true);
+        
+        $this->backupJob->update([
+            'status' => 'running',
+            'started_at' => now(),
+        ]);
+
+        $dbConn = $this->backupJob->databaseConnection;
+        $server = $dbConn->server;
+
+        // Build descriptive file name: Label_TargetDB_YYYYMMDD_HHmmss.sql.gz
+        $label = preg_replace('/[^A-Za-z0-9_\-]/', '_', $dbConn->label);
+        $targetDb = $dbConn->db_name ? preg_replace('/[^A-Za-z0-9_\-]/', '_', $dbConn->db_name) : 'ALL_DATABASES';
+        $timestamp = date('Ymd_His');
+        $tempFileName = "{$label}_{$targetDb}_{$timestamp}.sql.gz";
+        $remoteTempPath = "/tmp/{$tempFileName}";
+        $localTempPath = storage_path("app/backups/{$tempFileName}");
+
+        // Date folder name (e.g., 20260516)
+        $dateFolder = date('Ymd');
+
+        // Ensure local backup directory exists
+        if (!file_exists(storage_path('app/backups'))) {
+            mkdir(storage_path('app/backups'), 0755, true);
+        }
+
+        try {
+            // 1. Prepare mysqldump command
+            $dbNameParam = $dbConn->db_name ? escapeshellarg($dbConn->db_name) : '--all-databases';
+            $dumpCommand = sprintf(
+                "MYSQL_PWD=%s mysqldump -h %s -P %s -u %s %s 2> /tmp/dump_err.log | gzip > %s",
+                escapeshellarg($dbConn->db_password),
+                escapeshellarg($dbConn->db_host),
+                escapeshellarg($dbConn->db_port ?? 3306),
+                escapeshellarg($dbConn->db_username),
+                $dbNameParam,
+                escapeshellarg($remoteTempPath)
+            );
+
+            // 2. Execute on remote server
+            $sshService->execute($server, $dumpCommand);
+
+            // 3. Download via SFTP
+            $sftp = $sshService->sftp($server);
+            $sftp->get($remoteTempPath, $localTempPath);
+
+            // 4. Get file metadata and validate
+            $fileSize = filesize($localTempPath);
+            
+            // An empty gzip file is 20 bytes. A database dump < 100 bytes is essentially empty/failed.
+            if ($fileSize < 100) {
+                $errorLog = '';
+                try {
+                    $errorLog = $sshService->execute($server, "cat /tmp/dump_err.log");
+                } catch (\Throwable $e) {}
+                
+                throw new Exception("Backup failed resulting in an empty file. MySQL Error: " . trim($errorLog));
+            }
+
+            $this->backupJob->update([
+                'file_name' => $tempFileName,
+                'file_size_bytes' => $fileSize,
+            ]);
+
+            // 5. Upload to Google Drive with folder structure: Backup/20260516/file.sql.gz
+            $userStorage = UserStorage::where('user_id', $this->backupJob->triggered_by_user ?? $server->user_id)
+                ->where('provider', 'google_drive')
+                ->whereRaw('"is_active" = true')
+                ->first();
+
+            if (!$userStorage) {
+                throw new Exception("No active Google Drive storage found for backup.");
+            }
+
+            $googleDriveService->setAccessToken($userStorage);
+            
+            // Get or create root folder (e.g., "Backup")
+            $rootFolderId = $googleDriveService->getOrCreateFolderByName($userStorage->folder_name ?: 'Backup');
+            if ($rootFolderId !== $userStorage->folder_id) {
+                $userStorage->update(['folder_id' => $rootFolderId]);
+            }
+
+            // Get or create date subfolder (e.g., "20260516") inside root folder
+            $dateFolderId = $googleDriveService->getOrCreateSubfolder($dateFolder, $rootFolderId);
+
+            $driveFileId = $googleDriveService->uploadFile(
+                $localTempPath, 
+                $tempFileName, 
+                $dateFolderId
+            );
+
+            // 6. Success!
+            $duration = (int) ceil(microtime(true) - $startTime);
+            $this->backupJob->update([
+                'status' => 'success',
+                'finished_at' => now(),
+                'duration_seconds' => max(1, $duration),
+                'gdrive_file_id' => $driveFileId,
+                'gdrive_file_url' => "https://drive.google.com/open?id={$driveFileId}"
+            ]);
+
+            // 7. Cleanup
+            $sftp->delete($remoteTempPath);
+            unlink($localTempPath);
+
+        } catch (Throwable $e) {
+            $duration = (int) ceil(microtime(true) - $startTime);
+            $this->backupJob->update([
+                'status' => 'failed',
+                'finished_at' => now(),
+                'duration_seconds' => max(1, $duration),
+                'error_message' => $e->getMessage(),
+            ]);
+
+            // Cleanup local if exists
+            if (file_exists($localTempPath)) {
+                unlink($localTempPath);
+            }
+
+            throw $e;
+        }
+    }
+}

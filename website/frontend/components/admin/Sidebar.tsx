@@ -4,68 +4,76 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  ShieldIcon, 
-  LayoutGridIcon, 
-  LockIcon, 
+  LayoutDashboardIcon, 
   ServerIcon, 
+  DatabaseIcon, 
   ActivityIcon, 
-  SettingsIcon, 
-  UserIcon 
+  SettingsIcon,
+  ShieldCheckIcon,
+  CloudIcon,
+  ClockIcon
 } from "./Icons";
 
-export function Sidebar() {
+interface SidebarLinkProps {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+}
+
+const SidebarLink = ({ href, icon, label, active }: SidebarLinkProps) => (
+  <Link 
+    href={href}
+    className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+      active 
+        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+        : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
+    }`}
+  >
+    <span className={`transition-transform duration-300 ${active ? "" : "group-hover:scale-110"}`}>
+      {icon}
+    </span>
+    <span className="font-medium text-sm">{label}</span>
+  </Link>
+);
+
+export const Sidebar = () => {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-64 flex-col border-r border-slate-800 bg-slate-900/50 backdrop-blur-xl md:flex">
-      <div className="flex h-20 items-center px-6 border-b border-slate-800/50">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-            <ShieldIcon className="h-5 w-5 text-emerald-400" />
+    <aside className="w-72 bg-slate-950 border-r border-slate-800 flex flex-col h-screen sticky top-0">
+      <div className="p-8">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <ShieldCheckIcon className="text-white h-6 w-6" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-white">EnVault</span>
+          <span className="text-xl font-bold text-white tracking-tight italic">EnCenter</span>
         </div>
       </div>
-      
-      <nav className="flex-1 space-y-1 px-4 py-6">
-        <SidebarLink href="/admin" icon={<LayoutGridIcon />} label="Control Center" active={pathname === "/admin"} />
-        <SidebarLink href="/admin/groups" icon={<LayoutGridIcon />} label="Server Groups" active={pathname === "/admin/groups"} />
-        <SidebarLink href="/admin/servers" icon={<ServerIcon />} label="Server Fleet" active={pathname === "/admin/servers"} />
-        <SidebarLink href="/admin/vault" icon={<LockIcon />} label="Credential Vault" active={pathname === "/admin/vault"} />
+
+      <nav className="flex-1 px-4 space-y-2 overflow-y-auto">
+        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-4 mb-4">Command Center</div>
+        
+        <SidebarLink href="/admin" icon={<LayoutDashboardIcon />} label="Dashboard" active={pathname === "/admin"} />
+        <SidebarLink href="/admin/servers" icon={<ServerIcon />} label="Managed Servers" active={pathname === "/admin/servers"} />
+        <SidebarLink href="/admin/vault" icon={<DatabaseIcon />} label="Credential Vault" active={pathname === "/admin/vault"} />
+        <SidebarLink href="/admin/backups" icon={<ClockIcon />} label="Backup History" active={pathname === "/admin/backups"} />
+        <SidebarLink href="/admin/storage" icon={<CloudIcon />} label="Cloud Storage" active={pathname === "/admin/storage"} />
         <SidebarLink href="/admin/audit" icon={<ActivityIcon />} label="Audit Logs" active={pathname === "/admin/audit"} />
-        <SidebarLink href="/admin/settings" icon={<SettingsIcon />} label="Security Settings" active={pathname === "/admin/settings"} />
+        <SidebarLink href="/admin/settings" icon={<SettingsIcon />} label="System Settings" active={pathname === "/admin/settings"} />
       </nav>
 
-      <div className="mt-auto p-4 border-t border-slate-800/50">
-        <div className="flex items-center gap-3 rounded-xl bg-slate-800/40 p-3 border border-slate-700/30">
-          <div className="h-10 w-10 rounded-full bg-slate-700 flex items-center justify-center text-emerald-400 font-bold border border-emerald-500/20">
-            <UserIcon className="h-5 w-5" />
-          </div>
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-sm font-semibold text-white truncate">Administrator</span>
-            <div className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Encrypted Session</span>
+      <div className="p-6">
+        <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-white truncate">Administrator</p>
+              <p className="text-[10px] text-slate-500 truncate">Cyber Sentinel v1.0</p>
             </div>
           </div>
         </div>
       </div>
     </aside>
   );
-}
-
-function SidebarLink({ href, icon, label, active = false }: { href: string, icon: React.ReactNode, label: string, active?: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all group ${
-        active 
-          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-          : "text-slate-400 hover:bg-slate-800/50 hover:text-white"
-      }`}
-    >
-      <span className={`transition-colors ${active ? "text-emerald-400" : "text-slate-500 group-hover:text-emerald-400"}`}>{icon}</span>
-      {label}
-    </Link>
-  );
-}
+};

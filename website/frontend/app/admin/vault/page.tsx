@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon } from "@/components/admin/Icons";
+import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon } from "@/components/admin/Icons";
 import { DatabaseConnection } from "@/types/admin";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
 import { apiFetch } from "@/lib/api";
@@ -17,7 +17,10 @@ export default function VaultPage() {
     message: "",
     variant: "success"
   });
+  
+  // Separate loading states
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [backingUpId, setBackingUpId] = useState<string | null>(null);
 
   const handleTestConnection = async (id: string) => {
     setTestingId(id);
@@ -52,6 +55,37 @@ export default function VaultPage() {
       });
     } finally {
       setTestingId(null);
+    }
+  };
+
+  const handleRunBackup = async (id: string) => {
+    setBackingUpId(id);
+    try {
+      const response = await apiFetch(`/backups/run`, {
+        method: "POST",
+        body: JSON.stringify({ db_connection_id: id })
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setTestResult({
+          open: true,
+          title: "Backup Initiated",
+          message: "The backup engine has been dispatched. You can track its progress in the Backup History page.",
+          variant: "success"
+        });
+      } else {
+        throw new Error(data.message || "Failed to start backup");
+      }
+    } catch (err: any) {
+      setTestResult({
+        open: true,
+        title: "Backup Failed",
+        message: err.message || "Failed to communicate with the backup engine.",
+        variant: "danger"
+      });
+    } finally {
+      setBackingUpId(null);
     }
   };
 
@@ -109,8 +143,19 @@ export default function VaultPage() {
           >
             <PlayIcon className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="sm">Edit</Button>
-          <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-300">Revoke</Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-blue-400 hover:text-blue-300 flex items-center gap-1.5"
+            onClick={() => handleRunBackup(item.id)}
+            isLoading={backingUpId === item.id}
+          >
+            <CloudIcon className="h-3.5 w-3.5" />
+            BACKUP
+          </Button>
+          <Link href={`/admin/vault/${item.id}`}>
+            <Button variant="ghost" size="sm">Edit</Button>
+          </Link>
         </div>
       ),
       align: "right" as const
@@ -141,7 +186,7 @@ export default function VaultPage() {
       />
       <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
         <SmartTable<DatabaseConnection> 
-          fetchUrl="/api/v1/database-connections" 
+          fetchUrl="/database-connections" 
           columns={columns} 
           searchPlaceholder="Search credentials by label or host..." 
           refreshKey={refreshKey}

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('status', 20)->default('pending'); // 'pending'|'running'|'success'|'failed'
             $table->timestamp('started_at')->nullable();
             $table->timestamp('finished_at')->nullable();
-            $table->smallInteger('duration_seconds')->nullable();
+            $table->integer('duration_seconds')->nullable();
             $table->string('file_name', 255)->nullable();
             $table->bigInteger('file_size_bytes')->nullable();
             $table->string('gdrive_file_id', 255)->nullable();

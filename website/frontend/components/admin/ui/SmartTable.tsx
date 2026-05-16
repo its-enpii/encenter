@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { SearchIcon } from "../Icons";
 import { apiFetch } from "@/lib/api";
 import { SmartSelect } from "./Form";
@@ -33,7 +33,11 @@ export function SmartTable<T extends object>({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(initialData.length);
-  const [isLoading, setIsLoading] = useState(false);
+  
+  // Separate initial loading from background refresh
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasFetchedOnce = useRef(false);
 
   // Per page options
   const perPageOptions = [
@@ -55,27 +59,45 @@ export function SmartTable<T extends object>({
 
     const controller = new AbortController();
     const fetchData = async () => {
-      setIsLoading(true);
+      // Only show full loading on first ever fetch
+      if (!hasFetchedOnce.current) {
+        setIsInitialLoad(true);
+      } else {
+        setIsRefreshing(true);
+      }
+
       try {
         const params = new URLSearchParams({
           page: currentPage.toString(),
-          limit: itemsPerPage.toString(),
+          per_page: itemsPerPage.toString(),
           search: debouncedSearch,
         });
 
-        const cleanUrl = fetchUrl.startsWith('/api/v1') ? fetchUrl.replace('/api/v1', '') : fetchUrl;
-        const response = await apiFetch(`${cleanUrl}?${params.toString()}`, {
+        const response = await apiFetch(`${fetchUrl}?${params.toString()}`, {
           signal: controller.signal
         });
         const result = await response.json();
 
-        setData(result.data || []);
-        setTotalItems(result.total || 0);
+        // Handle Laravel Pagination format (result.data.data)
+        // or Simple format (result.data as array)
+        if (result.data && Array.isArray(result.data)) {
+          setData(result.data);
+          setTotalItems(result.total || result.data.length);
+        } else if (result.data && result.data.data && Array.isArray(result.data.data)) {
+          setData(result.data.data);
+          setTotalItems(result.data.total || 0);
+        } else {
+          setData([]);
+          setTotalItems(0);
+        }
+
+        hasFetchedOnce.current = true;
       } catch (error: any) {
         if (error.name === 'AbortError') return;
         console.error("Failed to fetch table data:", error);
       } finally {
-        setIsLoading(false);
+        setIsInitialLoad(false);
+        setIsRefreshing(false);
       }
     };
 
@@ -83,11 +105,28 @@ export function SmartTable<T extends object>({
     return () => controller.abort();
   }, [fetchUrl, currentPage, itemsPerPage, debouncedSearch, refreshKey]);
 
+  // Show full loading on page/perPage/search change (user-initiated navigation)
+  const handlePageChange = useCallback((page: number) => {
+    hasFetchedOnce.current = false;
+    setCurrentPage(page);
+  }, []);
+
+  const handlePerPageChange = useCallback((val: string) => {
+    hasFetchedOnce.current = false;
+    setItemsPerPage(Number(val));
+    setCurrentPage(1);
+  }, []);
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    hasFetchedOnce.current = false;
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  }, []);
+
   // Client-side fallback if no fetchUrl
   const displayData = useMemo(() => {
     if (fetchUrl) return data;
     
-    // Client side filtering/pagination if no URL
     const filtered = initialData.filter((item) =>
       Object.values(item).some(
         (val) => val && val.toString().toLowerCase().includes(searchTerm.toLowerCase())
@@ -112,14 +151,12 @@ export function SmartTable<T extends object>({
           <input
             type="text"
             value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
+            onChange={handleSearchChange}
             placeholder={searchPlaceholder}
             className="w-full rounded-xl bg-slate-950 border border-slate-800 py-2.5 pl-10 pr-4 text-sm text-slate-200 outline-none transition-all focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 placeholder:text-slate-600"
           />
-          {isLoading && (
+          {/* Subtle spinner for background refresh — non-blocking */}
+          {isRefreshing && (
             <div className="absolute inset-y-0 right-3 flex items-center">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500"></div>
             </div>
@@ -131,10 +168,7 @@ export function SmartTable<T extends object>({
           <SmartSelect 
             options={perPageOptions}
             value={itemsPerPage.toString()}
-            onChange={(val) => {
-              setItemsPerPage(Number(val));
-              setCurrentPage(1);
-            }}
+            onChange={handlePerPageChange}
             placeholder={itemsPerPage.toString()}
           />
         </div>
@@ -142,11 +176,12 @@ export function SmartTable<T extends object>({
 
       {/* Table Container */}
       <div className="relative rounded-2xl border border-slate-800 bg-slate-900/40 shadow-xl overflow-hidden min-h-[200px]">
-        {isLoading && (
-          <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[2px] z-20 flex items-center justify-center">
+        {/* Full loading overlay ONLY on initial load */}
+        {isInitialLoad && (
+          <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] z-20 flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500/20 border-t-emerald-500"></div>
-              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Synchronizing...</span>
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Loading...</span>
             </div>
           </div>
         )}
@@ -162,9 +197,9 @@ export function SmartTable<T extends object>({
                 ))}
               </tr>
             </thead>
-            <tbody className={`divide-y divide-slate-800/50 text-sm transition-opacity duration-200 ${isLoading ? 'opacity-40' : 'opacity-100'}`}>
-              {displayData.length > 0 ? (
-                displayData.map((item, rowIdx) => (
+            <tbody className="divide-y divide-slate-800/50 text-sm">
+              {data.length > 0 ? (
+                data.map((item, rowIdx) => (
                   <tr key={rowIdx} className="hover:bg-slate-800/30 transition-colors group">
                     {columns.map((col, colIdx) => (
                       <td key={colIdx} className={`px-6 py-4 ${col.className || ""} ${col.align === "right" ? "text-right" : col.align === "center" ? "text-center" : ""}`}>
@@ -180,7 +215,7 @@ export function SmartTable<T extends object>({
                   <td colSpan={columns.length} className="px-6 py-20 text-center">
                     <div className="flex flex-col items-center gap-2 text-slate-500">
                       <svg className="h-10 w-10 opacity-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                      <span className="text-sm italic">No data records found for &quot;{searchTerm}&quot;</span>
+                      <span className="text-sm italic">No data records found {searchTerm ? `for "${searchTerm}"` : ''}</span>
                     </div>
                   </td>
                 </tr>
@@ -198,8 +233,8 @@ export function SmartTable<T extends object>({
           </p>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1 || isLoading}
+              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1 || isInitialLoad}
               className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-emerald-400 disabled:opacity-30 disabled:pointer-events-none transition-all"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
@@ -207,12 +242,11 @@ export function SmartTable<T extends object>({
             
             <div className="flex items-center gap-1 px-2">
               {[...Array(totalPages)].map((_, i) => {
-                // Show first, last, and current page with neighbors
                 if (i === 0 || i === totalPages - 1 || (i >= currentPage - 2 && i <= currentPage)) {
                    return (
                     <button
                       key={i}
-                      onClick={() => setCurrentPage(i + 1)}
+                      onClick={() => handlePageChange(i + 1)}
                       className={`h-8 w-8 rounded-lg text-xs font-bold transition-all ${
                         currentPage === i + 1 
                           ? "bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20" 
@@ -229,8 +263,8 @@ export function SmartTable<T extends object>({
             </div>
 
             <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages || isLoading}
+              onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages || isInitialLoad}
               className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-emerald-400 disabled:opacity-30 disabled:pointer-events-none transition-all"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>
@@ -241,3 +275,4 @@ export function SmartTable<T extends object>({
     </div>
   );
 }
+
