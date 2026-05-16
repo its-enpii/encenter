@@ -9,7 +9,7 @@ import {
   SmartSelect,
 } from "@/components/admin/ui/Form";
 import { Button } from "@/components/admin/ui/Core";
-import { ShieldIcon, ServerIcon, ArrowLeftIcon } from "@/components/admin/Icons";
+import { ShieldIcon, ServerIcon, ArrowLeftIcon, DatabaseIcon } from "@/components/admin/Icons";
 import { apiFetch } from "@/lib/api";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
 import Link from "next/link";
