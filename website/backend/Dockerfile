@@ -13,7 +13,7 @@ RUN apk add --no-cache \
     git
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_pgsql pgsql gd zip intl
+RUN docker-php-ext-install pdo_pgsql pdo_mysql pgsql gd zip intl
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

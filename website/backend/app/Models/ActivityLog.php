@@ -29,4 +29,20 @@ class ActivityLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Helper to log an activity.
+     */
+    public static function log(string $action, string $resource, ?string $resourceId = null, array $meta = [])
+    {
+        return self::create([
+            'user_id' => \Illuminate\Support\Facades\Auth::id(),
+            'action' => $action,
+            'resource' => $resource,
+            'resource_id' => $resourceId,
+            'meta' => $meta,
+            'ip_address' => request()->ip(),
+            'created_at' => now(),
+        ]);
+    }
 }
