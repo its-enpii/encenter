@@ -594,13 +594,13 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 **Goal: Aplikasi aman, stabil, dan siap pakai jangka panjang**
 
-- [ ] Rate limiting semua endpoint
-- [ ] Review enkripsi — pastikan tidak ada field sensitif yang lolos
-- [ ] Handle edge case: SSH timeout, DB unreachable, GDrive quota penuh, token expired, webhook gagal
-- [ ] Loading state, error handling, dan empty state yang proper di Next.js
-- [ ] Responsive UI — bisa diakses dari HP browser
-- [ ] README lengkap untuk setup & deployment
-- [ ] Backup APP_KEY dan semua credential aplikasi ke tempat aman
+- [x] Rate limiting semua endpoint
+- [x] Review enkripsi — pastikan tidak ada field sensitif yang lolos
+- [x] Handle edge case: SSH timeout, DB unreachable, GDrive quota penuh, token expired, webhook gagal
+- [x] Loading state, error handling, dan empty state yang proper di Next.js
+- [x] Responsive UI — bisa diakses dari HP browser
+- [x] README lengkap untuk setup & deployment
+- [x] Backup APP_KEY dan semua credential aplikasi ke tempat aman
 
 **Deliverable:** Aplikasi production-ready ✓
 

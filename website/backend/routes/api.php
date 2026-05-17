@@ -7,7 +7,7 @@ use App\Http\Controllers\Api\V1\BackupController;
 
 Route::prefix('v1')->group(function () {
     // Public routes
-    Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('auth.login');
 
     // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
@@ -35,7 +35,7 @@ Route::prefix('v1')->group(function () {
 
         // Backup Actions
         Route::get('backups', [BackupController::class, 'index']);
-        Route::post('backups/run', [BackupController::class, 'run']);
+        Route::post('backups/run', [BackupController::class, 'run'])->middleware('throttle:backup');
         Route::get('backups/{id}', [BackupController::class, 'show']);
 
         // Phase 4: Webhooks

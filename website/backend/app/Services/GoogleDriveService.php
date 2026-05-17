@@ -144,55 +144,67 @@ class GoogleDriveService
      */
     public function uploadFile(string $filePath, string $fileName, string $folderId = null): string
     {
-        $driveService = new Drive($this->client);
-        $fileMetadata = new DriveFile([
-            'name' => $fileName,
-            'parents' => $folderId ? [$folderId] : []
-        ]);
-
-        $fileSize = filesize($filePath);
-        
-        // For very small files, simple multipart is fine
-        if ($fileSize <= 5 * 1024 * 1024) {
-            $content = file_get_contents($filePath);
-            $file = $driveService->files->create($fileMetadata, [
-                'data' => $content,
-                'mimeType' => 'application/octet-stream',
-                'uploadType' => 'multipart',
-                'fields' => 'id'
+        try {
+            $driveService = new Drive($this->client);
+            $fileMetadata = new DriveFile([
+                'name' => $fileName,
+                'parents' => $folderId ? [$folderId] : []
             ]);
-            return $file->id;
+
+            $fileSize = filesize($filePath);
+            
+            // For very small files, simple multipart is fine
+            if ($fileSize <= 5 * 1024 * 1024) {
+                $content = file_get_contents($filePath);
+                $file = $driveService->files->create($fileMetadata, [
+                    'data' => $content,
+                    'mimeType' => 'application/octet-stream',
+                    'uploadType' => 'multipart',
+                    'fields' => 'id'
+                ]);
+                return $file->id;
+            }
+
+            // For large files (e.g. 3GB databases), use chunked resumable upload to avoid memory exhaustion
+            $this->client->setDefer(true);
+            $request = $driveService->files->create($fileMetadata, [
+                'mimeType' => 'application/octet-stream',
+                'uploadType' => 'resumable'
+            ]);
+
+            $chunkSizeBytes = 20 * 1024 * 1024; // 20MB chunks
+            $media = new \Google\Http\MediaFileUpload(
+                $this->client,
+                $request,
+                'application/octet-stream',
+                null,
+                true,
+                $chunkSizeBytes
+            );
+            $media->setFileSize($fileSize);
+
+            $status = false;
+            $handle = fopen($filePath, "rb");
+            
+            while (!$status && !feof($handle)) {
+                $chunk = fread($handle, $chunkSizeBytes);
+                $status = $media->nextChunk($chunk);
+            }
+            
+            fclose($handle);
+            $this->client->setDefer(false); // Reset defer state
+            
+            return $status->id;
+        } catch (\Google\Service\Exception $e) {
+            $errors = $e->getErrors();
+            $reason = $errors[0]['reason'] ?? '';
+            if ($e->getCode() == 403 && in_array($reason, ['storageQuotaExceeded', 'quotaExceeded'])) {
+                throw new Exception("Google Drive upload failed: Storage Quota Exceeded. Please free up space.");
+            }
+            if ($e->getCode() == 401) {
+                throw new Exception("Google Drive upload failed: Unauthorized. Token might be revoked.");
+            }
+            throw new Exception("Google Drive API Error: " . $e->getMessage());
         }
-
-        // For large files (e.g. 3GB databases), use chunked resumable upload to avoid memory exhaustion
-        $this->client->setDefer(true);
-        $request = $driveService->files->create($fileMetadata, [
-            'mimeType' => 'application/octet-stream',
-            'uploadType' => 'resumable'
-        ]);
-
-        $chunkSizeBytes = 20 * 1024 * 1024; // 20MB chunks
-        $media = new \Google\Http\MediaFileUpload(
-            $this->client,
-            $request,
-            'application/octet-stream',
-            null,
-            true,
-            $chunkSizeBytes
-        );
-        $media->setFileSize($fileSize);
-
-        $status = false;
-        $handle = fopen($filePath, "rb");
-        
-        while (!$status && !feof($handle)) {
-            $chunk = fread($handle, $chunkSizeBytes);
-            $status = $media->nextChunk($chunk);
-        }
-        
-        fclose($handle);
-        $this->client->setDefer(false); // Reset defer state
-        
-        return $status->id;
     }
 }

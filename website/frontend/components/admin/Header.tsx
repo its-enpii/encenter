@@ -1,11 +1,14 @@
 import React from "react";
 import { MenuIcon, SearchIcon, BellIcon, PlusIcon } from "./Icons";
 
-export function Header() {
+export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
-    <header className="flex h-20 items-center justify-between border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-md px-8">
+    <header className="flex h-20 items-center justify-between border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-md px-4 md:px-8">
       <div className="flex items-center gap-6">
-        <button className="md:hidden p-2 text-slate-400 hover:text-emerald-400">
+        <button 
+          onClick={onMenuClick}
+          className="md:hidden p-2 text-slate-400 hover:text-emerald-400"
+        >
           <MenuIcon />
         </button>
         <div className="relative hidden lg:block">

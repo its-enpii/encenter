@@ -51,6 +51,10 @@ class WebhookService
                     'Content-Type' => 'application/json',
                 ])
                 ->timeout(10)
+                ->retry(2, 500, function ($exception, $request) {
+                    return $exception instanceof \Illuminate\Http\Client\ConnectionException ||
+                           ($exception instanceof \Illuminate\Http\Client\RequestException && $exception->response->serverError());
+                })
                 ->send('POST', $setting->webhook_url, [
                     'body' => $jsonPayload
                 ]);

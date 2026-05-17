@@ -25,6 +25,7 @@ class WebhookSetting extends Model
         'is_active' => 'boolean',
         'events' => 'array',
         'secret_key' => 'encrypted',
+        'webhook_url' => 'encrypted',
     ];
 
     /**

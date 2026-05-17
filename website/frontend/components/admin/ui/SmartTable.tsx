@@ -212,10 +212,19 @@ export function SmartTable<T extends object>({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-20 text-center">
-                    <div className="flex flex-col items-center gap-2 text-slate-500">
-                      <svg className="h-10 w-10 opacity-20" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                      <span className="text-sm italic">No data records found {searchTerm ? `for "${searchTerm}"` : ''}</span>
+                  <td colSpan={columns.length} className="px-6 py-24 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
+                      <div className="h-16 w-16 bg-slate-800/50 rounded-3xl flex items-center justify-center mb-4">
+                        <svg className="h-8 w-8 text-slate-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </div>
+                      <h3 className="text-base font-bold text-slate-300 mb-1">No Data Available</h3>
+                      <p className="text-sm text-slate-500 text-center leading-relaxed">
+                        {searchTerm 
+                          ? `We couldn't find any records matching "${searchTerm}". Try adjusting your search criteria.` 
+                          : "There are no records to display in this view yet."}
+                      </p>
                     </div>
                   </td>
                 </tr>
