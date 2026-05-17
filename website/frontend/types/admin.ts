@@ -51,3 +51,13 @@ export interface ActivityLog {
     email: string;
   };
 }
+
+export interface WebhookSetting {
+  id: string;
+  name: string;
+  webhook_url: string;
+  target_whatsapp_id?: string;
+  is_active: boolean;
+  events: string[];
+  created_at: string;
+}

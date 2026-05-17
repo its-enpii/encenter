@@ -37,5 +37,9 @@ Route::prefix('v1')->group(function () {
         Route::get('backups', [BackupController::class, 'index']);
         Route::post('backups/run', [BackupController::class, 'run']);
         Route::get('backups/{id}', [BackupController::class, 'show']);
+
+        // Phase 4: Webhooks
+        Route::apiResource('webhooks', \App\Http\Controllers\Api\V1\WebhookSettingController::class);
+        Route::post('webhooks/{id}/test', [\App\Http\Controllers\Api\V1\WebhookSettingController::class, 'test']);
     });
 });

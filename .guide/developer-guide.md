@@ -577,14 +577,14 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 **Goal: Notifikasi hasil backup terkirim ke n8n → WhatsApp**
 
-- [ ] CRUD API `webhook_settings`
-- [ ] `WebhookService` — kirim POST ke webhook URL dengan HMAC-SHA256 signature
-- [ ] Integrasi `WebhookService` di akhir `RunBackupJob` (sukses & gagal)
-- [ ] Endpoint `POST /webhooks/{id}/test` — kirim test payload
-- [ ] Next.js: halaman konfigurasi webhook (tambah URL, secret, events)
-- [ ] Next.js: tombol "Send Test" untuk verifikasi webhook
-- [ ] Next.js: form update profil (termasuk phone_number)
-- [ ] Test end-to-end: backup selesai → webhook dikirim → WA terima notifikasi ✓
+- [x] CRUD API `webhook_settings`
+- [x] `WebhookService` — kirim POST ke webhook URL dengan HMAC-SHA256 signature
+- [x] Integrasi `WebhookService` di akhir `RunBackupJob` (sukses & gagal)
+- [x] Endpoint `POST /webhooks/{id}/test` — kirim test payload
+- [x] Next.js: halaman konfigurasi webhook (tambah URL, secret, events)
+- [x] Next.js: tombol "Send Test" untuk verifikasi webhook
+- [x] Next.js: form update profil (termasuk phone_number)
+- [x] Test end-to-end: backup selesai → webhook dikirim → WA terima notifikasi ✓
 
 **Deliverable:** Notifikasi WhatsApp terkirim otomatis setelah backup ✓
 

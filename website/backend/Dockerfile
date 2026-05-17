@@ -1,21 +1,19 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.4-fpm
 
 WORKDIR /var/www/html
 
-# Install system dependencies
-RUN apk add --no-cache \
-    postgresql-dev \
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
     libpng-dev \
     libzip-dev \
-    icu-dev \
+    libicu-dev \
     zip \
     unzip \
-    git
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
 RUN docker-php-ext-install pdo_pgsql pdo_mysql pgsql gd zip intl
 
-# Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 COPY . .

@@ -32,4 +32,12 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the webhook settings for the user.
+     */
+    public function webhookSettings()
+    {
+        return $this->hasMany(WebhookSetting::class);
+    }
 }

@@ -33,7 +33,7 @@ class RunBackupJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(SshService $sshService, GoogleDriveService $googleDriveService): void
+    public function handle(SshService $sshService, GoogleDriveService $googleDriveService, \App\Services\WebhookService $webhookService): void
     {
         $startTime = microtime(true);
         
@@ -136,6 +136,26 @@ class RunBackupJob implements ShouldQueue
                 'gdrive_file_url' => "https://drive.google.com/open?id={$driveFileId}"
             ]);
 
+            $user = \App\Models\User::find($this->backupJob->triggered_by_user ?? $server->user_id);
+            if ($user) {
+                $webhookService->send('backup.success', [
+                    'backup_job_id' => $this->backupJob->id,
+                    'server_label' => $server->label,
+                    'database_label' => $dbConn->label,
+                    'status' => 'success',
+                    'file_name' => $tempFileName,
+                    'file_size_bytes' => $fileSize ?? 0,
+                    'gdrive_file_url' => "https://drive.google.com/open?id={$driveFileId}",
+                    'duration_seconds' => max(1, $duration),
+                    'triggered_by' => $this->backupJob->triggered_by,
+                ], $user);
+
+                $this->backupJob->update([
+                    'webhook_sent' => true,
+                    'webhook_sent_at' => now(),
+                ]);
+            }
+
             // 7. Cleanup
             $sftp->delete($remoteTempPath);
             unlink($localTempPath);
@@ -148,6 +168,24 @@ class RunBackupJob implements ShouldQueue
                 'duration_seconds' => max(1, $duration),
                 'error_message' => $e->getMessage(),
             ]);
+
+            $user = \App\Models\User::find($this->backupJob->triggered_by_user ?? $server->user_id ?? null);
+            if ($user) {
+                $webhookService->send('backup.failed', [
+                    'backup_job_id' => $this->backupJob->id,
+                    'server_label' => $server->label ?? 'Unknown',
+                    'database_label' => $dbConn->label ?? 'Unknown',
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage(),
+                    'duration_seconds' => max(1, $duration),
+                    'triggered_by' => $this->backupJob->triggered_by,
+                ], $user);
+
+                $this->backupJob->update([
+                    'webhook_sent' => true,
+                    'webhook_sent_at' => now(),
+                ]);
+            }
 
             // Cleanup local if exists
             if (file_exists($localTempPath)) {

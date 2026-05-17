@@ -11,7 +11,9 @@ import {
   SettingsIcon,
   ShieldCheckIcon,
   CloudIcon,
-  ClockIcon
+  ClockIcon,
+  WebhookIcon,
+  UserIcon
 } from "./Icons";
 
 interface SidebarLinkProps {
@@ -59,8 +61,10 @@ export const Sidebar = () => {
         <SidebarLink href="/admin/vault" icon={<DatabaseIcon />} label="Credential Vault" active={pathname === "/admin/vault"} />
         <SidebarLink href="/admin/backups" icon={<ClockIcon />} label="Backup History" active={pathname === "/admin/backups"} />
         <SidebarLink href="/admin/storage" icon={<CloudIcon />} label="Cloud Storage" active={pathname === "/admin/storage"} />
+        <SidebarLink href="/admin/webhooks" icon={<WebhookIcon />} label="Webhooks" active={pathname === "/admin/webhooks"} />
         <SidebarLink href="/admin/audit" icon={<ActivityIcon />} label="Audit Logs" active={pathname === "/admin/audit"} />
         <SidebarLink href="/admin/settings" icon={<SettingsIcon />} label="System Settings" active={pathname === "/admin/settings"} />
+        <SidebarLink href="/admin/profile" icon={<UserIcon />} label="Profile" active={pathname === "/admin/profile"} />
       </nav>
 
       <div className="p-6">
