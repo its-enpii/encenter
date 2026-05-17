@@ -1,85 +1,87 @@
-import React from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { StatsCard } from "@/components/admin/StatsCard";
 import { ServerFleet } from "@/components/admin/ServerFleet";
 import { AuditLog } from "@/components/admin/AuditLog";
+import { apiFetch } from "@/lib/api";
 
 export default function AdminDashboard() {
-  const servers = [
-    {
-      name: "PROD-WEB-01",
-      status: "Active" as const,
-      ip: "192.168.1.104",
-      load: "12%",
-      sync: "2m ago",
-    },
-    {
-      name: "PROD-DB-PRIMARY",
-      status: "Active" as const,
-      ip: "10.0.4.12",
-      load: "45%",
-      sync: "5s ago",
-    },
-    {
-      name: "BACKUP-GDRIVE-NODE",
-      status: "Idle" as const,
-      ip: "10.0.5.50",
-      load: "2%",
-      sync: "12h ago",
-    },
-    {
-      name: "DEV-STAGING-01",
-      status: "Active" as const,
-      ip: "192.168.2.11",
-      load: "18%",
-      sync: "1h ago",
-    },
-    {
-      name: "AUTH-VAULT-MIRROR",
-      status: "Warning" as const,
-      ip: "172.16.0.4",
-      load: "89%",
-      sync: "Now",
-    },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    servers: 0,
+    databases: 0,
+    backups: 0,
+  });
+  const [servers, setServers] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
 
-  const auditLogs = [
-    {
-      type: "success" as const,
-      title: "Credential Decrypted",
-      user: "admin_root",
-      time: "14:22:05",
-    },
-    {
-      type: "warning" as const,
-      title: "New SSH Tunnel",
-      user: "system_bot",
-      time: "13:10:44",
-    },
-    {
-      type: "error" as const,
-      title: "Failed Login Attempt",
-      user: "124.55.xx.xx",
-      time: "12:05:12",
-    },
-    {
-      type: "success" as const,
-      title: "Database Backup",
-      user: "backup_worker",
-      time: "04:00:01",
-    },
-    {
-      type: "success" as const,
-      title: "Vault Key Rotated",
-      user: "admin_root",
-      time: "Yesterday",
-    },
-    {
-      type: "warning" as const,
-      title: "Large File Upload",
-      user: "backup_worker",
-      time: "Yesterday",
-    },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [serversRes, auditRes, dbRes, backupsRes] = await Promise.all([
+          apiFetch("/servers"),
+          apiFetch("/audit-logs?per_page=10"),
+          apiFetch("/database-connections"),
+          apiFetch("/backups")
+        ]);
+
+        const serversData = await serversRes.json();
+        const auditData = await auditRes.json();
+        const dbData = await dbRes.json();
+        const backupsData = await backupsRes.json();
+
+        // Map Servers to ServerFleet format
+        const mappedServers = (serversData.data?.data || serversData.data || []).map((s: any) => ({
+          name: s.label,
+          status: s.is_active ? "Active" : "Idle",
+          ip: s.host,
+          load: "N/A", // Not implemented yet
+          sync: s.last_connected ? new Date(s.last_connected).toLocaleTimeString() : "Never",
+        }));
+        setServers(mappedServers.slice(0, 5));
+
+        // Map Audit Logs
+        const mappedLogs = (auditData.data?.data || auditData.data || []).map((log: any) => {
+          const actionStr = (log.action || "").toLowerCase();
+          return {
+            type: actionStr.includes('fail') || actionStr.includes('error') ? 'error' 
+                : actionStr.includes('warn') ? 'warning' 
+                : 'success',
+            title: log.action || 'Unknown Action',
+            user: log.user?.name || log.ip_address || 'System',
+            time: new Date(log.created_at).toLocaleString(),
+          };
+        });
+        setAuditLogs(mappedLogs);
+
+        // Map Stats
+        setStats({
+          servers: serversData.data?.total || serversData.data?.length || 0,
+          databases: dbData.data?.total || dbData.data?.length || 0,
+          backups: backupsData.data?.total || backupsData.data?.length || 0,
+        });
+
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500/20 border-t-emerald-500"></div>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Loading Telemetry...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">
@@ -107,25 +109,25 @@ export default function AdminDashboard() {
           trendValue="+0.2%"
         />
         <StatsCard
-          title="Active Tunnels"
-          value="14/15"
-          description="SSH Tunnels Established"
+          title="Active Servers"
+          value={stats.servers.toString()}
+          description="Managed Nodes"
           trend="neutral"
           trendValue="STABLE"
         />
         <StatsCard
-          title="Encrypted Secrets"
-          value="1,248"
+          title="Database Connections"
+          value={stats.databases.toString()}
           description="Total stored credentials"
-          trend="up"
-          trendValue="+12"
+          trend="neutral"
+          trendValue="SECURE"
         />
         <StatsCard
-          title="Backup Success"
-          value="100%"
-          description="Last 24 hours"
-          trend="neutral"
-          trendValue="PERFECT"
+          title="Total Backups"
+          value={stats.backups.toString()}
+          description="Cloud archives"
+          trend="up"
+          trendValue="SYNCING"
         />
       </div>
 

@@ -1,4 +1,5 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+export const PMA_URL = process.env.NEXT_PUBLIC_PMA_URL || 'http://localhost:8081';
 
 export async function apiFetch(endpoint: string, options: any = {}) {
     const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;

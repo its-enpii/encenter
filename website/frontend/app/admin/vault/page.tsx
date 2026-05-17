@@ -6,7 +6,7 @@ import { Badge, Button } from "@/components/admin/ui/Core";
 import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon } from "@/components/admin/Icons";
 import { DatabaseConnection } from "@/types/admin";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, PMA_URL } from "@/lib/api";
 import Link from "next/link";
 
 export default function VaultPage() {
@@ -92,7 +92,7 @@ export default function VaultPage() {
   const handleOpenPma = (item: DatabaseConnection) => {
     // Buka phpMyAdmin via autologin.php dengan kredensial dari Vault
     const form = document.createElement("form");
-    form.action = "http://localhost:8081/autologin.php";
+    form.action = `${PMA_URL}/autologin.php`;
     form.method = "POST";
     form.target = "_blank";
 
