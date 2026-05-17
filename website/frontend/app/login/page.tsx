@@ -60,7 +60,7 @@ export default function LoginPage() {
                             <ShieldIcon className="h-8 w-8 text-emerald-400" />
                         </div>
                         <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
-                            EnVault <span className="text-emerald-500">Access</span>
+                            EnCenter <span className="text-emerald-500">Access</span>
                         </h1>
                         <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
                             Secure Server Control Center

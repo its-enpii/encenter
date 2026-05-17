@@ -1,7 +1,7 @@
 services:
-  website-backend:
+  envault-backend:
     build: ./website/backend
-    container_name: encenter-backend
+    container_name: envault-backend
     restart: unless-stopped
     volumes:
       - ./website/backend:/var/www/html
@@ -11,9 +11,9 @@ services:
     networks:
       - agent-network
 
-  website-worker:
+  envault-worker:
     build: ./website/backend
-    container_name: encenter-worker
+    container_name: envault-worker
     restart: unless-stopped
     command: php artisan queue:work --verbose --tries=3 --timeout=600
     volumes:
@@ -22,13 +22,13 @@ services:
       - APP_ENV=local
       - APP_DEBUG=true
     depends_on:
-      - website-backend
+      - envault-backend
     networks:
       - agent-network
 
-  website-nginx:
+  envault-nginx:
     image: nginx:alpine
-    container_name: encenter-nginx
+    container_name: envault-nginx
     restart: unless-stopped
     ports:
       - "8000:80"
@@ -36,11 +36,11 @@ services:
       - ./website/backend:/var/www/html
       - ./website/backend/nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - website-backend
+      - envault-backend
     networks:
       - agent-network
 
-  website-frontend:
+  encenter-frontend:
     build: ./website/frontend
     container_name: encenter-frontend
     restart: unless-stopped

@@ -32,6 +32,7 @@ export interface DatabaseConnection {
   db_port: number;
   db_name: string;
   db_username: string;
+  db_password?: string;
   is_active: boolean;
   notes: string | null;
   server?: Server;
