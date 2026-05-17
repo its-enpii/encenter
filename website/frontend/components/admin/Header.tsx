@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { MenuIcon, SearchIcon, BellIcon, PlusIcon, ServerIcon, DatabaseIcon } from "./Icons";
 import { GlobalSearch } from "./GlobalSearch";
+import { NotificationBell } from "./NotificationBell";
 import { apiFetch } from "@/lib/api";
 
 export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
@@ -59,7 +60,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
     <>
       <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-      <header className="flex h-20 items-center justify-between border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-md px-4 md:px-8">
+      <header className="relative z-30 flex h-20 items-center justify-between border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-md px-4 md:px-8">
         <div className="flex items-center gap-6">
           <button 
             onClick={onMenuClick}
@@ -86,10 +87,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
           SYS-STATUS: {sysStatus}
         </div>
         
-        <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
-          <BellIcon className="h-5 w-5" />
-          <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-emerald-500 border-2 border-slate-900"></span>
-        </button>
+        <NotificationBell />
         
         <div className="h-6 w-px bg-slate-800"></div>
         
