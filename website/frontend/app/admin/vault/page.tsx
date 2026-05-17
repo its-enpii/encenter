@@ -89,6 +89,32 @@ export default function VaultPage() {
     }
   };
 
+  const handleOpenPma = (item: DatabaseConnection) => {
+    // Buka phpMyAdmin via autologin.php dengan kredensial dari Vault
+    const form = document.createElement("form");
+    form.action = "http://localhost:8081/autologin.php";
+    form.method = "POST";
+    form.target = "_blank";
+
+    const fields = {
+      pma_username: item.db_username || "",
+      pma_password: item.db_password || "",
+      pma_servername: `${item.server?.host || item.db_host}:${item.db_port}`
+    };
+
+    Object.entries(fields).forEach(([key, value]) => {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = value;
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  };
+
   const columns = [
     { 
       header: "Database Label", 
@@ -134,6 +160,19 @@ export default function VaultPage() {
       header: "Actions",
       accessor: (item: DatabaseConnection) => (
         <div className="flex justify-end gap-2">
+          {(item.db_type === "mysql" || item.db_type === "mariadb") && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-amber-400 hover:text-amber-300 flex items-center gap-1"
+              onClick={() => handleOpenPma(item)}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              PMA
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="sm" 

@@ -132,6 +132,17 @@ services:
     networks:
       - agent-network
 
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: encenter-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    environment:
+      - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
+    networks:
+      - agent-network
+
 networks:
   agent-network:
     driver: bridge

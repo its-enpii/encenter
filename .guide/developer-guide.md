@@ -594,8 +594,6 @@ Total estimasi: **6–8 minggu** (part-time, dikerjakan di sela project lain)
 
 **Goal: Aplikasi aman, stabil, dan siap pakai jangka panjang**
 
-- [ ] SSL certificate (acme.sh / Let's Encrypt)
-- [ ] IP whitelist — akses dashboard hanya dari IP tertentu
 - [ ] Rate limiting semua endpoint
 - [ ] Review enkripsi — pastikan tidak ada field sensitif yang lolos
 - [ ] Handle edge case: SSH timeout, DB unreachable, GDrive quota penuh, token expired, webhook gagal
