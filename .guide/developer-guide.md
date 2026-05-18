@@ -110,7 +110,7 @@ n8n terima webhook → kirim WhatsApp ke phone_number
 | -------------- | -------------------------------- | ------------------------------- |
 | Frontend       | Next.js 14 (App Router)          | Web dashboard, SSR              |
 | UI Components  | Shadcn/ui + Tailwind CSS         | Komponen siap pakai             |
-| Backend API    | Laravel 11                       | Framework utama, queue, webhook |
+| Backend API    | Laravel 13                       | Framework utama, queue, webhook |
 | Database       | Supabase (PostgreSQL)            | Managed DB, auto-backup, RLS    |
 | Auth           | Laravel Sanctum                  | Session & API token             |
 | SSH Connection | phpseclib/phpseclib              | Pure PHP SSH2, tanpa ekstensi C |

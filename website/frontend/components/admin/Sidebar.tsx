@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { 
   LayoutDashboardIcon, 
   ServerIcon, 
+  LayoutGridIcon,
   DatabaseIcon, 
   ActivityIcon, 
   SettingsIcon,
@@ -75,6 +76,7 @@ export const Sidebar = ({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (
           
           <div onClick={() => setIsOpen && setIsOpen(false)}>
             <SidebarLink href="/admin" icon={<LayoutDashboardIcon />} label="Dashboard" active={pathname === "/admin"} />
+            <SidebarLink href="/admin/groups" icon={<LayoutGridIcon />} label="Server Groups" active={pathname === "/admin/groups"} />
             <SidebarLink href="/admin/servers" icon={<ServerIcon />} label="Managed Servers" active={pathname === "/admin/servers"} />
             <SidebarLink href="/admin/vault" icon={<DatabaseIcon />} label="Credential Vault" active={pathname === "/admin/vault"} />
             <SidebarLink href="/admin/backups" icon={<ClockIcon />} label="Backup History" active={pathname === "/admin/backups"} />

@@ -176,7 +176,7 @@ export default function GroupsPage() {
 
       <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
         <SmartTable<ServerGroup> 
-          fetchUrl="/api/v1/server-groups" 
+          fetchUrl="/server-groups" 
           columns={columns} 
           refreshKey={refreshKey}
         />
