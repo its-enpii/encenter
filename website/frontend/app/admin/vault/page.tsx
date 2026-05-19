@@ -5,11 +5,16 @@ import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
 import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon } from "@/components/admin/Icons";
 import { DatabaseConnection } from "@/types/admin";
-import { AlertDialog } from "@/components/admin/ui/Dialog";
+import { AlertDialog, ConfirmDialog } from "@/components/admin/ui/Dialog";
 import { apiFetch, PMA_URL } from "@/lib/api";
 import Link from "next/link";
 
 export default function VaultPage() {
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean, connectionId: string | null }>({ 
+    open: false, 
+    connectionId: null 
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [testResult, setTestResult] = useState<{ open: boolean, title: string, message: string, variant: "success" | "danger" }>({
     open: false,
@@ -21,6 +26,28 @@ export default function VaultPage() {
   // Separate loading states
   const [testingId, setTestingId] = useState<string | null>(null);
   const [backingUpId, setBackingUpId] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    if (!deleteDialog.connectionId) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await apiFetch(`/database-connections/${deleteDialog.connectionId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setRefreshKey(prev => prev + 1);
+        setDeleteDialog({ open: false, connectionId: null });
+      } else {
+        alert("Failed to delete database connection.");
+      }
+    } catch (err) {
+      alert("Network error during deletion.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleTestConnection = async (id: string) => {
     setTestingId(id);
@@ -195,6 +222,14 @@ export default function VaultPage() {
           <Link href={`/admin/vault/${item.id}`}>
             <Button variant="ghost" size="sm">Edit</Button>
           </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-rose-400 hover:text-rose-300"
+            onClick={() => setDeleteDialog({ open: true, connectionId: item.id })}
+          >
+            Delete
+          </Button>
         </div>
       ),
       align: "right" as const
@@ -216,6 +251,15 @@ export default function VaultPage() {
         </Link>
       </div>
 
+      <ConfirmDialog 
+        isOpen={deleteDialog.open}
+        onClose={() => setDeleteDialog({ open: false, connectionId: null })}
+        onConfirm={handleDelete}
+        title="Purge Database Credentials?"
+        description="This action will permanently remove this database credential from the vault."
+        confirmText="Confirm Purge"
+        isLoading={isDeleting}
+      />
       <AlertDialog 
         isOpen={testResult.open}
         onClose={() => setTestResult({ ...testResult, open: false })}
