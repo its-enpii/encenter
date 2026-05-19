@@ -31,7 +31,6 @@ Enpii adalah seorang **Developer Team Lead** di sebuah perusahaan software kecil
 
 Enpii memimpin tim kecil yang terdiri dari:
 
-- 1 senior developer (kuat di finance/data)
 - 1 backend developer
 - 1 junior developer frontend
 - 1 junior yang butuh bimbingan lebih

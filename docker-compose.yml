@@ -62,8 +62,11 @@ services:
     build: ./openclaw
     container_name: encenter-openclaw
     restart: unless-stopped
+    ports:
+      - "18789:18789"
     environment:
       - PI_AI_ANTIGRAVITY_VERSION=1.25.0
+      - OPENCLAW_GATEWAY_BIND=lan
     volumes:
       - ./openclaw/config:/root/.openclaw
       - ./openclaw/workspace:/root/.openclaw/workspace

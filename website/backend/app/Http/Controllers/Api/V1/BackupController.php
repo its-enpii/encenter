@@ -43,11 +43,27 @@ class BackupController extends Controller
     {
         try {
             $request->validate([
-                'db_connection_id' => 'required|uuid|exists:database_connections,id',
+                'db_connection_id' => 'required_without:db_label|nullable|uuid|exists:database_connections,id',
+                'db_label' => 'required_without:db_connection_id|nullable|string|max:100',
                 'triggered_by' => 'nullable|string|max:50'
             ]);
 
-            $dbConn = DatabaseConnection::findOrFail($request->db_connection_id);
+            if ($request->has('db_connection_id') && $request->db_connection_id) {
+                $dbConn = DatabaseConnection::whereHas('server', function($q) {
+                    $q->where('user_id', Auth::id());
+                })->findOrFail($request->db_connection_id);
+            } else {
+                $dbConn = DatabaseConnection::whereHas('server', function($q) {
+                    $q->where('user_id', Auth::id());
+                })->where('label', $request->db_label)->first();
+
+                if (!$dbConn) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => "Database connection with label '{$request->db_label}' not found or unauthorized."
+                    ], 404);
+                }
+            }
 
             $backupJob = BackupJob::create([
                 'db_connection_id' => $dbConn->id,
