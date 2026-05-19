@@ -26,6 +26,13 @@ class BackupController extends Controller
                 $query->where('db_connection_id', $request->db_connection_id);
             }
 
+            if ($request->get('paginate') === 'false') {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $query->get()
+                ]);
+            }
+
             return response()->json([
                 'status' => 'success',
                 'data' => $query->paginate($request->get('per_page', 10))

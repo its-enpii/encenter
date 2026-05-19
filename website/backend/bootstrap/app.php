@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+            'auth.api' => \App\Http\Middleware\ApiKeyOrSanctum::class,
         ]);
 
         // Prevent Sanctum from redirecting unauthenticated API requests (302).

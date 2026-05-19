@@ -15,28 +15,50 @@ Karena EnCenter berjalan dalam satu jaringan internal Docker Compose (`agent-net
 
 ---
 
-## 2. Autentikasi Praktis (Sanctum Token Permanen)
+## 2. Pilihan Autentikasi Praktis untuk n8n
 
-Semua endpoint dilindungi oleh middleware `auth:sanctum` (kecuali login).
-Untuk otomatisasi n8n, **buatlah satu token permanen sekali saja**, lalu pasang pada Header HTTP n8n.
+Semua endpoint API EnCenter dilindungi oleh middleware keamanan terpadu. Untuk integrasi n8n, Anda dapat memilih salah satu dari dua metode autentikasi berikut:
 
-### Cara Cepat Generate Token via Laravel Tinker:
-Jalankan perintah ini di terminal server EnCenter Anda:
-```bash
-docker exec -it envault-backend php artisan tinker
-```
-Lalu eksekusi perintah PHP berikut:
-```php
-$user = \App\Models\User::where('email', 'admin@encenter.com')->first();
-echo $user->createToken('n8n_integration')->plainTextToken;
-```
-Salin token yang dikembalikan (misalnya: `3|abc123xyz...`).
+### Metode A: Menggunakan API Key (Sangat Direkomendasikan & Praktis)
 
-### Cara Memasang di Node HTTP Request n8n:
-Pada panel konfigurasi node **HTTP Request** n8n:
-1.  **Authentication:** Pilih `Header Auth`
-2.  **Name:** `Authorization`
-3.  **Value:** `Bearer <TOKEN_PERMANEN_ANDA>` (Contoh: `Bearer 3|abc123xyz...`)
+Anda dapat menggunakan header API Key statis tanpa perlu meng-generate token database. 
+
+1.  **Konfigurasi di Server (EnCenter):**
+    Tambahkan variabel environment `N8N_API_KEY` di dalam file `.env` pada folder `website/backend/.env`:
+    ```env
+    N8N_API_KEY=kunci_rahasia_n8n_anda_yang_sangat_panjang_dan_aman
+    ```
+2.  **Konfigurasi di Node HTTP Request n8n:**
+    Pada panel konfigurasi node **HTTP Request** n8n:
+    *   **Authentication:** Pilih `None` (karena kita akan memasukkan custom header secara manual)
+    *   **Headers (Tambahkan Baru):**
+        *   **Name:** `X-API-Key`
+        *   **Value:** `kunci_rahasia_n8n_anda_yang_sangat_panjang_dan_aman` (sesuai `.env`)
+
+---
+
+### Metode B: Menggunakan Sanctum Personal Access Token (Alternatif)
+
+Jika Anda lebih memilih menggunakan sistem token bawaan Laravel Sanctum, Anda dapat membuat token sekali saja yang bersifat permanen.
+
+1.  **Generate Token via Laravel Tinker:**
+    Jalankan perintah ini di terminal server EnCenter Anda:
+    ```bash
+    docker exec -it envault-backend php artisan tinker
+    ```
+    Lalu eksekusi perintah PHP berikut:
+    ```php
+    $user = \App\Models\User::where('email', 'admin@encenter.com')->first();
+    echo $user->createToken('n8n_integration')->plainTextToken;
+    ```
+    Salin token yang dikembalikan (misalnya: `3|abc123xyz...`).
+2.  **Konfigurasi di Node HTTP Request n8n:**
+    Pada panel konfigurasi node **HTTP Request** n8n:
+    *   **Authentication:** Pilih `Header Auth`
+    *   **Name:** `Authorization`
+    *   **Value:** `Bearer <TOKEN_PERMANEN_ANDA>` (Contoh: `Bearer 3|abc123xyz...`)
+
+---
 
 ---
 
@@ -224,13 +246,14 @@ Pada panel konfigurasi node **HTTP Request** n8n:
 
 ### 3.3. Server Nodes / Koneksi SSH (`/servers`)
 
-#### A. List Server Nodes (Paginated)
+#### A. List Server Nodes
 *   **Method / Route:** `GET /servers`
 *   **Query Parameters:**
     *   `group_id` (integer, optional) - filter berdasarkan grup
     *   `search` (string, optional) - filter berdasarkan label server
     *   `limit` (integer, optional, default: 10) - jumlah per halaman
-*   **Response Sukses (200 OK):**
+    *   `paginate` (string, optional) - Jika diisi `"false"`, API akan langsung mengembalikan **flat array (non-paginated)**.
+*   **Response Sukses (200 OK - default paginated):**
     ```json
     {
       "current_page": 1,
@@ -322,12 +345,13 @@ Pada panel konfigurasi node **HTTP Request** n8n:
 
 ### 3.4. Koneksi Database (`/database-connections`)
 
-#### A. List Koneksi Database (Paginated)
+#### A. List Koneksi Database
 *   **Method / Route:** `GET /database-connections`
 *   **Query Parameters:**
     *   `server_id` (integer, optional) - filter berdasarkan server node
     *   `limit` (integer, optional, default: 10)
-*   **Response Sukses (200 OK):**
+    *   `paginate` (string, optional) - Jika diisi `"false"`, API akan langsung mengembalikan **flat array (non-paginated)**. Sangat direkomendasikan untuk n8n agar n8n dapat melakukan iterasi otomatis tanpa perlu melingkar atau memparsing struktur pagination!
+*   **Response Sukses (200 OK - default paginated):**
     ```json
     {
       "current_page": 1,
@@ -445,7 +469,41 @@ Ini adalah sekumpulan endpoint vital yang biasanya diakses n8n untuk otomasi sch
     > [!NOTE]
     > Request ini bersifat asinkronus. Segera setelah request dipanggil, backup job akan dimasukkan ke antrean worker Laravel (`envault-worker`) untuk dieksekusi di latar belakang agar n8n tidak mengalami *timeout* saat mencadangkan database yang berukuran sangat besar.
 
-#### B. Cek Status Backup Job Tertentu
+#### B. Mendapatkan Riwayat Pencadangan (Backup History)
+*   **Method / Route:** `GET /backups`
+*   **Query Parameters:**
+    *   `db_connection_id` (UUID, optional) - filter berdasarkan koneksi database tertentu
+    *   `per_page` (integer, optional, default: 10) - jumlah per halaman
+    *   `paginate` (string, optional) - Jika diisi `"false"`, API akan langsung mengembalikan **flat array (non-paginated)** di dalam properti `"data"`. Sangat praktis untuk n8n!
+*   **Response Sukses (200 OK):**
+    ```json
+    {
+      "status": "success",
+      "data": [
+        {
+          "id": 99,
+          "db_connection_id": "e0e84dbf-ea7a-43a3-9310-88350259828e",
+          "status": "success",
+          "file_name": "MySQL_Main_DB_app_production_20260519_035500.sql.gz",
+          "file_size_bytes": 1420551,
+          "duration_seconds": 8,
+          "gdrive_file_url": "https://drive.google.com/open?id=1EC3Vh8rBJk2...",
+          "started_at": "2026-05-19T03:55:01.000000Z",
+          "finished_at": "2026-05-19T03:55:09.000000Z",
+          "database_connection": {
+            "id": "e0e84dbf-ea7a-43a3-9310-88350259828e",
+            "label": "MySQL Main DB",
+            "server": {
+              "id": 1,
+              "label": "App Server 01"
+            }
+          }
+        }
+      ]
+    }
+    ```
+
+#### C. Cek Status Backup Job Tertentu
 *   **Method / Route:** `GET /backups/{id}`
 *   **Response Sukses (200 OK):**
     ```json
@@ -516,6 +574,40 @@ Digunakan untuk mendaftarkan URL n8n yang akan menerima notifikasi otomatis keti
     }
     ```
 
+### 3.7. Log Aktivitas / Audit Logs (`/audit-logs`)
+Digunakan untuk merekam seluruh jejak aktivitas pengguna di dalam Vault Credential dan jalannya pencadangan sistem.
+
+#### A. List Audit Logs
+*   **Method / Route:** `GET /audit-logs`
+*   **Query Parameters:**
+    *   `search` (string, optional) - pencarian berdasarkan aksi atau tipe resource
+    *   `limit` (integer, optional, default: 20) - jumlah per halaman
+    *   `paginate` (string, optional) - Jika diisi `"false"`, API akan langsung mengembalikan **flat array (non-paginated)**. Sangat direkomendasikan untuk n8n!
+*   **Response Sukses (200 OK - default paginated):**
+    ```json
+    {
+      "current_page": 1,
+      "data": [
+        {
+          "id": 1,
+          "user_id": 1,
+          "action": "VAULT_ADD",
+          "resource": "DB_CONN",
+          "target_id": "e0e84dbf-ea7a-43a3-9310-88350259828e",
+          "details": {
+            "label": "MySQL Main DB"
+          },
+          "created_at": "2026-05-19T03:55:00.000000Z",
+          "user": {
+            "id": 1,
+            "name": "Admin EnCenter",
+            "email": "admin@encenter.com"
+          }
+        }
+      ]
+    }
+    ```
+
 ---
 
 ## 4. Keamanan Payload Webhook ke n8n
@@ -542,7 +634,7 @@ Content-Type: application/json
     "status": "success",
     "file_name": "MySQL_Main_DB_app_production_20260519_035500.sql.gz",
     "file_size_bytes": 1420551,
-    "gdrive_file_url": "https://drive.google.com/open?id=1A2B3C4D5E...",
+    "gdrive_file_url": "https://drive.google.com/open?id=1A2B3C4D5E...", // Link langsung menuju FOLDER Google Drive tempat backup hari ini disimpan
     "duration_seconds": 8,
     "triggered_by": "n8n_scheduler"
   }

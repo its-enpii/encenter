@@ -28,11 +28,13 @@ class ServerController extends Controller
             $query->where('label', 'like', '%' . $request->search . '%');
         }
 
-        $servers = $query->with('group')
-            ->orderBy('label')
-            ->paginate($request->limit ?? 10);
+        $query = $query->with('group')->orderBy('label');
 
-        return response()->json($servers);
+        if ($request->get('paginate') === 'false') {
+            return response()->json($query->get());
+        }
+
+        return response()->json($query->paginate($request->limit ?? 10));
     }
 
     /**

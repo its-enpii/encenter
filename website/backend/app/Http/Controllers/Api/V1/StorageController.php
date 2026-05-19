@@ -86,7 +86,7 @@ class StorageController extends Controller
                     'refresh_token' => $tokens['refresh_token'] ?? ($existing ? $existing->refresh_token : null),
                     'expires_at' => now()->addSeconds($tokens['expires_in']),
                     'folder_name' => $folderName,
-                    'is_active' => true
+                    'is_active' => \Illuminate\Support\Facades\DB::raw('true')
                 ]
             );
 

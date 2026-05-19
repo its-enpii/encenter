@@ -24,11 +24,13 @@ class DatabaseConnectionController extends Controller
             $query->where('server_id', $request->server_id);
         }
 
-        $connections = $query->with('server')
-            ->orderBy('label')
-            ->paginate($request->limit ?? 10);
+        $query = $query->with('server')->orderBy('label');
 
-        return response()->json($connections);
+        if ($request->get('paginate') === 'false') {
+            return response()->json($query->get());
+        }
+
+        return response()->json($query->paginate($request->limit ?? 10));
     }
 
     /**

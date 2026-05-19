@@ -135,7 +135,7 @@ class RunBackupJob implements ShouldQueue
                 'finished_at' => now(),
                 'duration_seconds' => max(1, $duration),
                 'gdrive_file_id' => $driveFileId,
-                'gdrive_file_url' => "https://drive.google.com/open?id={$driveFileId}"
+                'gdrive_file_url' => "https://drive.google.com/open?id={$dateFolderId}"
             ]);
 
             $user = \App\Models\User::find($this->backupJob->triggered_by_user ?? $server->user_id);
@@ -148,7 +148,7 @@ class RunBackupJob implements ShouldQueue
                         'status' => 'success',
                         'file_name' => $tempFileName,
                         'file_size_bytes' => $fileSize ?? 0,
-                        'gdrive_file_url' => "https://drive.google.com/open?id={$driveFileId}",
+                        'gdrive_file_url' => "https://drive.google.com/open?id={$dateFolderId}",
                         'duration_seconds' => max(1, $duration),
                         'triggered_by' => $this->backupJob->triggered_by,
                     ], $user);

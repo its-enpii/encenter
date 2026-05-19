@@ -24,9 +24,12 @@ class ActivityLogController extends Controller
             });
         }
 
-        $logs = $query->orderBy('created_at', 'desc')
-            ->paginate($request->limit ?? 20);
+        $query = $query->orderBy('created_at', 'desc');
 
-        return response()->json($logs);
+        if ($request->get('paginate') === 'false') {
+            return response()->json($query->get());
+        }
+
+        return response()->json($query->paginate($request->limit ?? 20));
     }
 }
