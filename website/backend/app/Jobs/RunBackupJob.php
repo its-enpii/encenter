@@ -154,7 +154,7 @@ class RunBackupJob implements ShouldQueue
                     ], $user);
 
                     $this->backupJob->update([
-                        'webhook_sent' => true,
+                        'webhook_sent' => \Illuminate\Support\Facades\DB::raw('true'),
                         'webhook_sent_at' => now(),
                     ]);
                 } catch (\Throwable $we) {
@@ -189,7 +189,7 @@ class RunBackupJob implements ShouldQueue
                     ], $user);
 
                     $this->backupJob->update([
-                        'webhook_sent' => true,
+                        'webhook_sent' => \Illuminate\Support\Facades\DB::raw('true'),
                         'webhook_sent_at' => now(),
                     ]);
                 } catch (\Throwable $we) {
