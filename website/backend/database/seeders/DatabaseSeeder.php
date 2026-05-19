@@ -20,7 +20,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@encenter.com',
             'password' => \Illuminate\Support\Facades\Hash::make('password'),
             'phone_number' => '628123456789',
-            'is_active' => true,
+            'is_active' => \Illuminate\Support\Facades\DB::raw('true'),
         ]);
     }
 }

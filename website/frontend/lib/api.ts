@@ -24,7 +24,7 @@ export async function apiFetch(endpoint: string, options: any = {}) {
             // Handle unauthorized (redirect to login or refresh token)
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('auth_token');
-                window.location.href = '/auth/login';
+                window.location.href = '/login';
             }
         }
 
