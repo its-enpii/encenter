@@ -65,7 +65,7 @@ export default function AuditLogsPage() {
 
       <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
         <SmartTable<ActivityLog> 
-          fetchUrl="/api/v1/audit-logs" 
+          fetchUrl="/audit-logs" 
           columns={columns} 
           searchPlaceholder="Filter logs by action or resource..." 
         />
