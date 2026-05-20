@@ -10,6 +10,7 @@ services:
       - APP_DEBUG=true
     networks:
       - agent-network
+      - web-network
 
   envault-worker:
     build: ./website/backend
@@ -25,6 +26,7 @@ services:
       - envault-backend
     networks:
       - agent-network
+      - web-network
 
   envault-nginx:
     image: nginx:alpine
@@ -39,6 +41,7 @@ services:
       - envault-backend
     networks:
       - agent-network
+      - web-network
 
   encenter-frontend:
     build: ./website/frontend
@@ -57,6 +60,7 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
     networks:
       - agent-network
+      - web-network
 
   openclaw:
     build: ./openclaw
@@ -72,6 +76,7 @@ services:
       - ./openclaw/workspace:/root/.openclaw/workspace
     networks:
       - agent-network
+      - web-network
 
   n8n:
     image: docker.n8n.io/n8nio/n8n
@@ -91,6 +96,7 @@ services:
       - ./n8n/data:/home/node/.n8n
     networks:
       - agent-network
+      - web-network
 
   postgres:
     image: postgres:15
@@ -104,6 +110,7 @@ services:
       - ./evolution/postgres:/var/lib/postgresql/data
     networks:
       - agent-network
+      - web-network
 
   redis:
     image: redis:7
@@ -111,6 +118,7 @@ services:
     restart: unless-stopped
     networks:
       - agent-network
+      - web-network
 
   evolution-api:
     image: evoapicloud/evolution-api:latest
@@ -134,6 +142,7 @@ services:
       - ./evolution/instances:/evolution/instances
     networks:
       - agent-network
+      - web-network
 
   phpmyadmin:
     image: phpmyadmin:latest
@@ -145,8 +154,11 @@ services:
       - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
     networks:
       - agent-network
+      - web-network
 
 networks:
   agent-network:
     driver: bridge
     name: agent-network
+  web-network:
+    external: true
