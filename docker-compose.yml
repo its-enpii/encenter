@@ -54,7 +54,7 @@ services:
       - /app/node_modules
       - /app/.next
     args:
-      - NODE_ENV=${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-development}
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
