@@ -57,10 +57,8 @@ export const Sidebar = ({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-950 border-r border-slate-800 flex flex-col h-screen transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-4 md:p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <ShieldCheckIcon className="text-white h-6 w-6" />
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight italic">EnCenter</span>
+            <img src="/logo.png" alt="Logo" width="40" height="40" />
+            <span className="text-xl font-bold text-white tracking-tight italic">EnVault</span>
           </div>
           
           <button 
