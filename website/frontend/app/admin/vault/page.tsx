@@ -1,11 +1,12 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon } from "@/components/admin/Icons";
+import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon, EyeIcon } from "@/components/admin/Icons";
 import { DatabaseConnection } from "@/types/admin";
 import { AlertDialog, ConfirmDialog } from "@/components/admin/ui/Dialog";
+import { CredentialModal } from "@/components/admin/ui/CredentialModal";
 import { apiFetch, PMA_URL } from "@/lib/api";
 import Link from "next/link";
 
@@ -22,20 +23,18 @@ export default function VaultPage() {
     message: "",
     variant: "success"
   });
-  
-  // Separate loading states
   const [testingId, setTestingId] = useState<string | null>(null);
   const [backingUpId, setBackingUpId] = useState<string | null>(null);
+  const [revealModal, setRevealModal] = useState<{ open: boolean; credential: any | null }>({ open: false, credential: null });
+  const [revealLoadingId, setRevealLoadingId] = useState<string | null>(null);
 
   const handleDelete = async () => {
     if (!deleteDialog.connectionId) return;
-    
     setIsDeleting(true);
     try {
       const response = await apiFetch(`/database-connections/${deleteDialog.connectionId}`, {
         method: "DELETE",
       });
-
       if (response.ok) {
         setRefreshKey(prev => prev + 1);
         setDeleteDialog({ open: false, connectionId: null });
@@ -56,7 +55,6 @@ export default function VaultPage() {
         method: "POST",
       });
       const data = await response.json();
-
       if (response.ok) {
         setTestResult({
           open: true,
@@ -93,7 +91,6 @@ export default function VaultPage() {
         body: JSON.stringify({ db_connection_id: id })
       });
       const data = await response.json();
-
       if (response.ok) {
         setTestResult({
           open: true,
@@ -117,18 +114,15 @@ export default function VaultPage() {
   };
 
   const handleOpenPma = (item: DatabaseConnection) => {
-    // Buka phpMyAdmin via autologin.php dengan kredensial dari Vault
     const form = document.createElement("form");
     form.action = `${PMA_URL}/autologin.php`;
     form.method = "POST";
     form.target = "_blank";
-
     const fields = {
       pma_username: item.db_username || "",
       pma_password: item.db_password || "",
       pma_servername: `${item.server?.host || item.db_host}:${item.db_port}`
     };
-
     Object.entries(fields).forEach(([key, value]) => {
       const input = document.createElement("input");
       input.type = "hidden";
@@ -136,10 +130,36 @@ export default function VaultPage() {
       input.value = value;
       form.appendChild(input);
     });
-
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+  };
+
+  const handleRevealCredential = async (id: string) => {
+    setRevealLoadingId(id);
+    try {
+      const response = await apiFetch(`/database-connections/${id}/reveal`);
+      const data = await response.json();
+      if (response.ok) {
+        setRevealModal({ open: true, credential: data.data });
+      } else {
+        setTestResult({
+          open: true,
+          title: "Access Denied",
+          message: data.message || "Failed to decrypt credentials.",
+          variant: "danger"
+        });
+      }
+    } catch (err) {
+      setTestResult({
+        open: true,
+        title: "Network Error",
+        message: "Failed to communicate with the vault.",
+        variant: "danger"
+      });
+    } finally {
+      setRevealLoadingId(null);
+    }
   };
 
   const columns = [
@@ -219,6 +239,16 @@ export default function VaultPage() {
             <CloudIcon className="h-3.5 w-3.5" />
             BACKUP
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
+            onClick={() => handleRevealCredential(item.id)}
+            isLoading={revealLoadingId === item.id}
+          >
+            <EyeIcon className="h-3.5 w-3.5" />
+            VIEW
+          </Button>
           <Link href={`/admin/vault/${item.id}`}>
             <Button variant="ghost" size="sm">Edit</Button>
           </Link>
@@ -267,6 +297,13 @@ export default function VaultPage() {
         description={testResult.message}
         variant={testResult.variant}
       />
+      <CredentialModal
+        isOpen={revealModal.open}
+        onClose={() => setRevealModal({ open: false, credential: null })}
+        type="database"
+        credential={revealModal.credential}
+      />
+
       <div className="bg-slate-900/40 p-6 rounded-2xl border border-slate-800">
         <SmartTable<DatabaseConnection> 
           fetchUrl="/database-connections" 
@@ -278,3 +315,4 @@ export default function VaultPage() {
     </div>
   );
 }
+

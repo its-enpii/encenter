@@ -20,9 +20,14 @@ Route::prefix('v1')->group(function () {
         
         Route::apiResource('servers', \App\Http\Controllers\Api\V1\ServerController::class);
         Route::post('servers/{id}/test', [\App\Http\Controllers\Api\V1\ServerController::class, 'testConnection']);
+        Route::get('servers/{id}/credentials', [\App\Http\Controllers\Api\V1\ServerController::class, 'credentials']);
         
         Route::apiResource('database-connections', \App\Http\Controllers\Api\V1\DatabaseConnectionController::class);
+        Route::get('servers/{id}/reveal', [\App\Http\Controllers\Api\V1\ServerController::class, 'reveal']);
+        Route::get('database-connections/{id}/reveal', [\App\Http\Controllers\Api\V1\DatabaseConnectionController::class, 'reveal']);
+
         Route::post('database-connections/{id}/test', [\App\Http\Controllers\Api\V1\DatabaseConnectionController::class, 'testConnection']);
+        Route::get('database-connections/{id}/credentials', [\App\Http\Controllers\Api\V1\DatabaseConnectionController::class, 'credentials']);
 
         Route::get('audit-logs', [\App\Http\Controllers\Api\V1\ActivityLogController::class, 'index']);
 
@@ -43,3 +48,4 @@ Route::prefix('v1')->group(function () {
         Route::post('webhooks/{id}/test', [\App\Http\Controllers\Api\V1\WebhookSettingController::class, 'test']);
     });
 });
+

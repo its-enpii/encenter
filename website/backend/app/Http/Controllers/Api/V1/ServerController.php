@@ -94,6 +94,39 @@ class ServerController extends Controller
     }
 
     /**
+     * Display decrypted credentials for specified server.
+     */
+    public function credentials(string $id)
+    {
+        $server = Server::where('user_id', Auth::id())->findOrFail($id);
+
+        ActivityLog::log('VIEW_CREDENTIALS', 'SERVER', $server->id, ['label' => $server->label]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $server->id,
+                'label' => $server->label,
+                'host' => $server->host,
+                'port' => $server->port,
+                'username' => $server->username,
+                'auth_type' => $server->auth_type,
+                'password' => $server->auth_type === 'password' ? $server->password : null,
+                'private_key' => $server->auth_type === 'private_key' ? $server->private_key : null,
+                'passphrase' => $server->passphrase,
+            ],
+        ]);
+    }
+
+    /**
+     * Backward-compatible alias for credentials().
+     */
+    public function reveal(string $id)
+    {
+        return $this->credentials($id);
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
@@ -180,3 +213,4 @@ class ServerController extends Controller
         }
     }
 }
+

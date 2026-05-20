@@ -80,6 +80,45 @@ class DatabaseConnectionController extends Controller
     }
 
     /**
+     * Display decrypted credentials for specified database connection.
+     */
+    public function credentials(string $id)
+    {
+        $connection = DatabaseConnection::whereHas('server', function($q) {
+            $q->where('user_id', Auth::id());
+        })->with('server')->findOrFail($id);
+
+        ActivityLog::log('VIEW_CREDENTIALS', 'DB_CONN', $connection->id, ['label' => $connection->label]);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $connection->id,
+                'label' => $connection->label,
+                'db_type' => $connection->db_type,
+                'db_host' => $connection->db_host,
+                'db_port' => $connection->db_port,
+                'db_name' => $connection->db_name,
+                'db_username' => $connection->db_username,
+                'db_password' => $connection->db_password,
+                'server' => $connection->server ? [
+                    'id' => $connection->server->id,
+                    'label' => $connection->server->label,
+                    'host' => $connection->server->host,
+                ] : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Backward-compatible alias for credentials().
+     */
+    public function reveal(string $id)
+    {
+        return $this->credentials($id);
+    }
+
+    /**
      * Update the specified resource in storage.
      */
     public function update(Request $request, string $id)
@@ -203,3 +242,4 @@ class DatabaseConnectionController extends Controller
         }
     }
 }
+

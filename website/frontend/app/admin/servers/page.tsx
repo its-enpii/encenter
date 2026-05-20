@@ -1,11 +1,12 @@
-"use client";
+﻿"use client";
 
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { PlusIcon, ServerIcon, PlayIcon } from "@/components/admin/Icons";
+import { PlusIcon, ServerIcon, PlayIcon, EyeIcon } from "@/components/admin/Icons";
 import { Server } from "@/types/admin";
 import { ConfirmDialog, AlertDialog } from "@/components/admin/ui/Dialog";
+import { CredentialModal } from "@/components/admin/ui/CredentialModal";
 import { apiFetch } from "@/lib/api";
 import Link from "next/link";
 
@@ -24,15 +25,16 @@ export default function ServersPage() {
   });
   const [testingId, setTestingId] = useState<string | null>(null);
 
+  const [revealModal, setRevealModal] = useState<{ open: boolean; credential: any | null }>({ open: false, credential: null });
+  const [revealLoadingId, setRevealLoadingId] = useState<string | null>(null);
+
   const handleDelete = async () => {
     if (!deleteDialog.serverId) return;
-    
     setIsDeleting(true);
     try {
       const response = await apiFetch(`/servers/${deleteDialog.serverId}`, {
         method: "DELETE",
       });
-
       if (response.ok) {
         setRefreshKey(prev => prev + 1);
         setDeleteDialog({ open: false, serverId: null });
@@ -45,6 +47,7 @@ export default function ServersPage() {
       setIsDeleting(false);
     }
   };
+
   const handleTestConnection = async (id: string) => {
     setTestingId(id);
     try {
@@ -52,7 +55,6 @@ export default function ServersPage() {
         method: "POST",
       });
       const data = await response.json();
-
       if (response.ok) {
         setTestResult({
           open: true,
@@ -78,6 +80,33 @@ export default function ServersPage() {
       });
     } finally {
       setTestingId(null);
+    }
+  };
+
+  const handleRevealCredential = async (id: string) => {
+    setRevealLoadingId(id);
+    try {
+      const response = await apiFetch(`/servers/${id}/reveal`);
+      const data = await response.json();
+      if (response.ok) {
+        setRevealModal({ open: true, credential: data.data });
+      } else {
+        setTestResult({
+          open: true,
+          title: "Access Denied",
+          message: data.message || "Failed to decrypt credentials.",
+          variant: "danger"
+        });
+      }
+    } catch (err) {
+      setTestResult({
+        open: true,
+        title: "Network Error",
+        message: "Failed to communicate with the vault.",
+        variant: "danger"
+      });
+    } finally {
+      setRevealLoadingId(null);
     }
   };
 
@@ -139,6 +168,16 @@ export default function ServersPage() {
           >
             <PlayIcon className="h-3.5 w-3.5" />
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
+            onClick={() => handleRevealCredential(item.id)}
+            isLoading={revealLoadingId === item.id}
+          >
+            <EyeIcon className="h-3.5 w-3.5" />
+            VIEW
+          </Button>
           <Link href={`/admin/servers/${item.id}/edit`}>
             <Button variant="ghost" size="sm">
               Edit
@@ -176,6 +215,13 @@ export default function ServersPage() {
         description={testResult.message}
         variant={testResult.variant}
       />
+      <CredentialModal
+        isOpen={revealModal.open}
+        onClose={() => setRevealModal({ open: false, credential: null })}
+        type="server"
+        credential={revealModal.credential}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Server Fleet</h1>
@@ -202,3 +248,4 @@ export default function ServersPage() {
     </div>
   );
 }
+
