@@ -53,11 +53,14 @@ services:
       - ./website/frontend:/app
       - /app/node_modules
       - /app/.next
+    args:
+      - NODE_ENV=${NODE_ENV:-development}
     environment:
-      - NODE_ENV=development
-      - WATCHPACK_POLLING=true
-      - CHOKIDAR_USEPOLLING=true
-      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NODE_ENV=${NODE_ENV:-development}
+      - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
+      - CHOKIDAR_USEPOLLING=${CHOKIDAR_USEPOLLING:-true}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_PMA_URL=${NEXT_PUBLIC_PMA_URL}
     networks:
       - agent-network
       - web-network

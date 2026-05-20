@@ -11,8 +11,9 @@ RUN pnpm install
 
 COPY . .
 
-RUN pnpm build
+ARG NODE_ENV=development
+RUN if [ "$NODE_ENV" = "production" ]; then pnpm build; fi
 
 EXPOSE 3000
 
-CMD ["pnpm", "dev"]
+CMD if [ "$NODE_ENV" = "production" ]; then pnpm start; else pnpm dev; fi
