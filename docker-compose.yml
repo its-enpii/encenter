@@ -52,10 +52,6 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
-    volumes:
-      - ./website/frontend:/app
-      - /app/node_modules
-      - /app/.next
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
