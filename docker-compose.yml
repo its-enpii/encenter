@@ -92,6 +92,7 @@ services:
       - WEBHOOK_URL=${WEBHOOK_URL}
       - GENERIC_TIMEZONE=Asia/Jakarta
       - N8N_COMMUNITY_PACKAGES_ENABLED=true
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
     volumes:
       - ./n8n/data:/home/node/.n8n
     networks:
