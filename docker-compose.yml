@@ -44,7 +44,10 @@ services:
       - web-network
 
   encenter-frontend:
-    build: ./website/frontend
+    build:
+      context: ./website/frontend
+      args:
+        NODE_ENV: ${NODE_ENV:-development}
     container_name: encenter-frontend
     restart: unless-stopped
     ports:
@@ -53,8 +56,6 @@ services:
       - ./website/frontend:/app
       - /app/node_modules
       - /app/.next
-    args:
-      NODE_ENV: ${NODE_ENV:-development}
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
