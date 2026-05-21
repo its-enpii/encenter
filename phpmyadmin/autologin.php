@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 declare(strict_types=1);
 
 // Tell PHP we are behind a trusted HTTPS reverse proxy so session cookies
