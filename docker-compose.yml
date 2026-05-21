@@ -146,22 +146,17 @@
       - web-network
 
   phpmyadmin:
-    image: phpmyadmin:latest
+    build: ./phpmyadmin
     container_name: encenter-phpmyadmin
     restart: unless-stopped
     ports:
       - "8081:80"
     volumes:
-      - ./phpmyadmin/autologin.php:/var/www/html/autologin.php
-      - ./phpmyadmin/config.inc.php:/var/www/html/config.user.inc.php
-      - ./phpmyadmin/encenter.ini:/usr/local/etc/php/conf.d/encenter.ini
-      - ./phpmyadmin/Session.php:/var/www/html/libraries/classes/Session.php
-      - ./phpmyadmin/.htaccess:/var/www/html/.htaccess
-    environment:
-      - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
+      - ./phpmyadmin:/var/www/html
     networks:
       - agent-network
       - web-network
+
 
 networks:
   agent-network:

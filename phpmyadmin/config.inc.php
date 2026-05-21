@@ -1,14 +1,23 @@
 <?php
 declare(strict_types=1);
 
-ini_set('session.cookie_secure', '0');
-ini_set('session.cookie_samesite', 'Lax');
+/**
+ * phpMyAdmin configuration for EnCenter
+ * Served as part of the project - no cross-origin issues
+ */
 
-$cfg['is_https'] = false;
-$cfg['ForceSSL'] = false;
-$cfg['CookieSecure'] = false;
+// Required: blowfish secret for cookie encryption (change in production)
+$cfg['blowfish_secret'] = 'encenter-pma-32char-secret-key!!';
+
+// Allow connecting to any MySQL server (needed for Credential Vault)
 $cfg['AllowArbitraryServer'] = true;
 
-if (empty($cfg['blowfish_secret'])) {
-    $cfg['blowfish_secret'] = 'encenter-pma-secret-key-32chars!!';
-}
+// Default server entry (required but user can override via autologin)
+$cfg['Servers'][1]['auth_type'] = 'cookie';
+$cfg['Servers'][1]['host'] = 'localhost';
+$cfg['Servers'][1]['compress'] = false;
+$cfg['Servers'][1]['AllowNoPassword'] = false;
+
+// Upload/save dirs
+$cfg['UploadDir'] = '';
+$cfg['SaveDir'] = '';

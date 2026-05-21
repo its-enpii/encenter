@@ -1,42 +1,41 @@
 <?php
 declare(strict_types=1);
 
-ini_set('session.cookie_secure', '0');
-ini_set('session.cookie_samesite', 'Lax');
+/**
+ * autologin.php - Pre-fill phpMyAdmin login from EnCenter dashboard
+ *
+ * Flow: dashboard opens pma.domain/autologin.php?params (GET, new tab)
+ *       -> autologin.php renders form -> auto-submit to index.php (POST)
+ *       -> everything same-origin, no cross-origin cookie issues
+ */
 
-session_name('phpMyAdmin');
-session_start();
-
-// Accept credentials via GET (opened as new tab from dashboard)
-// All subsequent requests stay same-origin (pma.domain -> pma.domain)
-// so session cookie is sent correctly without cross-origin restrictions.
 $username = $_GET['pma_username'] ?? '';
 $password = $_GET['pma_password'] ?? '';
 $server   = $_GET['pma_servername'] ?? '';
 
-if ($username && $server) {
-    if (empty($_SESSION[' PMA_token '])) {
-        $_SESSION[' PMA_token '] = bin2hex(random_bytes(16));
-    }
-    $token = $_SESSION[' PMA_token '];
-    ?>
-    <!DOCTYPE html>
-    <html>
-    <head><title>Connecting to phpMyAdmin...</title></head>
-    <body>
-        <form id="autologin" action="index.php?route=/" method="POST">
-            <input type="hidden" name="set_session"    value="<?php echo htmlspecialchars(session_id()); ?>">
-            <input type="hidden" name="token"          value="<?php echo htmlspecialchars($token); ?>">
-            <input type="hidden" name="pma_username"   value="<?php echo htmlspecialchars($username); ?>">
-            <input type="hidden" name="pma_password"   value="<?php echo htmlspecialchars($password); ?>">
-            <input type="hidden" name="pma_servername" value="<?php echo htmlspecialchars($server); ?>">
-            <input type="hidden" name="server"         value="1">
-        </form>
-        <script>document.getElementById('autologin').submit();</script>
-    </body>
-    </html>
-    <?php
-    exit;
+if (!$username || !$server) {
+    http_response_code(400);
+    exit('Missing login parameters. Please access through the EnCenter dashboard.');
 }
-
-echo "Missing login parameters. Please access through the EnCenter dashboard.";
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connecting to phpMyAdmin...</title>
+    <style>
+        body { background: #1e293b; color: #94a3b8; font-family: monospace;
+               display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        p { font-size: 14px; }
+    </style>
+</head>
+<body>
+    <p>Connecting to database, please wait...</p>
+    <form id="f" action="index.php" method="POST">
+        <input type="hidden" name="pma_username"   value="<?= htmlspecialchars($username) ?>">
+        <input type="hidden" name="pma_password"   value="<?= htmlspecialchars($password) ?>">
+        <input type="hidden" name="pma_servername" value="<?= htmlspecialchars($server) ?>">
+        <input type="hidden" name="server"         value="1">
+    </form>
+    <script>document.getElementById('f').submit();</script>
+</body>
+</html>
