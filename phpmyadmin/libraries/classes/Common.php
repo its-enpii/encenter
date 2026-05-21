@@ -493,16 +493,6 @@ final class Common
             return;
         }
 
-        // Warn in case the mismatch is result of failed setting of session cookie
-        if (isset($_POST['set_session']) && $_POST['set_session'] !== session_id()) {
-            trigger_error(
-                __(
-                    'Failed to set session cookie. Maybe you are using HTTP instead of HTTPS to access phpMyAdmin.'
-                ),
-                PHP_VERSION_ID < 80400 ? E_USER_ERROR : E_USER_WARNING
-            );
-        }
-
         /**
          * We don't allow any POST operation parameters if the token is mismatched
          * or is not provided.

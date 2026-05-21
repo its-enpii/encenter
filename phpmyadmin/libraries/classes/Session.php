@@ -151,7 +151,7 @@ class Session
             0,
             $cookiePath,
             '',
-            $config->isHttps(),
+            false,
             true
         );
 
