@@ -1,4 +1,4 @@
-﻿services:
+services:
   envault-backend:
     build: ./website/backend
     container_name: envault-backend
@@ -26,7 +26,6 @@
       - envault-backend
     networks:
       - agent-network
-      - web-network
 
   envault-nginx:
     image: nginx:alpine
@@ -164,5 +163,4 @@ networks:
     name: agent-network
   web-network:
     external: true
-
 
