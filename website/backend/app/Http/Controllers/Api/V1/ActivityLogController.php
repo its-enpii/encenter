@@ -32,4 +32,42 @@ class ActivityLogController extends Controller
 
         return response()->json($query->paginate($request->limit ?? 20));
     }
+
+    /**
+     * Bulk-purge old audit logs for the current operator.
+     * Accepts `older_than_days` (int, 0 means purge ALL).
+     */
+    public function purge(Request $request)
+    {
+        $validated = $request->validate([
+            'older_than_days' => 'required|integer|min:0|max:36500',
+        ]);
+
+        $days = (int) $validated['older_than_days'];
+
+        $query = ActivityLog::where('user_id', Auth::id());
+
+        if ($days > 0) {
+            $cutoff = now()->subDays($days);
+            $query->where('created_at', '<', $cutoff);
+        }
+
+        $deleted = $query->delete();
+
+        ActivityLog::log('PURGE', 'ACTIVITY_LOG', null, [
+            'older_than_days' => $days,
+            'deleted_count' => $deleted,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $deleted > 0
+                ? "Purged {$deleted} audit log entr" . ($deleted === 1 ? 'y' : 'ies') . '.'
+                : 'No matching audit logs to purge.',
+            'data' => [
+                'deleted' => $deleted,
+                'older_than_days' => $days,
+            ],
+        ]);
+    }
 }

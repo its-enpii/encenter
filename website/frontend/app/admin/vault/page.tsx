@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon, EyeIcon } from "@/components/admin/Icons";
+import { PlusIcon, DatabaseIcon, ServerIcon, PlayIcon, CloudIcon, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/Icons";
 import { DatabaseConnection } from "@/types/admin";
 import { AlertDialog, ConfirmDialog } from "@/components/admin/ui/Dialog";
 import { CredentialModal } from "@/components/admin/ui/CredentialModal";
@@ -178,40 +178,36 @@ export default function VaultPage() {
   };
 
   const columns = [
-    { 
-      header: "Database Label", 
+    {
+      header: "Database",
       accessor: (item: DatabaseConnection) => (
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-emerald-400 transition-colors">
+          <div className="h-8 w-8 rounded bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-emerald-400 transition-colors shrink-0">
             <DatabaseIcon className="h-4 w-4" />
           </div>
-          <div>
-            <span className="font-bold text-slate-200 block">{item.label}</span>
-            <span className="text-[10px] text-slate-500 font-mono">{item.db_type.toUpperCase()}</span>
+          <div className="min-w-0">
+            <span className="font-bold text-slate-200 block truncate">{item.label}</span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              {item.db_type.toUpperCase()} &middot; {item.db_name || 'ALL DBS'}
+            </span>
           </div>
-        </div>
-      )
-    },
-    { 
-      header: "Associated Server", 
-      accessor: (item: DatabaseConnection) => (
-        <div className="flex items-center gap-2 text-slate-400 text-xs">
-          <ServerIcon className="h-3 w-3" />
-          {item.server?.label || 'Unknown'}
         </div>
       )
     },
     {
-      header: "Target DB",
+      header: "Server / Endpoint",
       accessor: (item: DatabaseConnection) => (
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${item.db_name ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-          {item.db_name || 'ALL DATABASES'}
-        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-slate-300 text-xs truncate">
+            <ServerIcon className="h-3 w-3 shrink-0" />
+            <span className="truncate">{item.server?.label || 'Unknown'}</span>
+          </div>
+          <span className="text-[10px] text-slate-500 font-mono">{item.db_host}:{item.db_port}</span>
+        </div>
       )
     },
-    { header: "Endpoint", accessor: (item: DatabaseConnection) => `${item.db_host}:${item.db_port}`, className: "font-mono text-xs text-slate-400" },
-    { 
-      header: "Status", 
+    {
+      header: "Status",
       accessor: (item: DatabaseConnection) => (
         <Badge variant={item.is_active ? 'success' : 'neutral'}>
           {item.is_active ? 'Linked' : 'Disconnected'}
@@ -221,60 +217,64 @@ export default function VaultPage() {
     {
       header: "Actions",
       accessor: (item: DatabaseConnection) => (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-1">
           {(item.db_type === "mysql" || item.db_type === "mariadb") && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-amber-400 hover:text-amber-300 flex items-center gap-1"
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Open phpMyAdmin"
+              className="text-amber-400 hover:text-amber-300 px-2"
               onClick={() => handleOpenPma(item)}
               isLoading={pmaLoadingId === item.id}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              PMA
             </Button>
           )}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-emerald-400 hover:text-emerald-300"
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Test connection"
+            className="text-emerald-400 hover:text-emerald-300 px-2"
             onClick={() => handleTestConnection(item.id)}
             isLoading={testingId === item.id}
           >
             <PlayIcon className="h-3.5 w-3.5" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-blue-400 hover:text-blue-300 flex items-center gap-1.5"
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Run backup"
+            className="text-blue-400 hover:text-blue-300 px-2"
             onClick={() => handleRunBackup(item.id)}
             isLoading={backingUpId === item.id}
           >
             <CloudIcon className="h-3.5 w-3.5" />
-            BACKUP
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
+            title="View credentials"
+            className="text-purple-400 hover:text-purple-300 px-2"
             onClick={() => handleRevealCredential(item.id)}
             isLoading={revealLoadingId === item.id}
           >
             <EyeIcon className="h-3.5 w-3.5" />
-            VIEW
           </Button>
           <Link href={`/admin/vault/${item.id}`}>
-            <Button variant="ghost" size="sm">Edit</Button>
+            <Button variant="ghost" size="sm" title="Edit" className="px-2">
+              <PencilIcon className="h-3.5 w-3.5" />
+            </Button>
           </Link>
           <Button
             variant="ghost"
             size="sm"
-            className="text-rose-400 hover:text-rose-300"
+            title="Delete"
+            className="text-rose-400 hover:text-rose-300 px-2"
             onClick={() => setDeleteDialog({ open: true, connectionId: item.id })}
           >
-            Delete
+            <TrashIcon className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),

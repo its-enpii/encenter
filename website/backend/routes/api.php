@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function () {
         Route::get('database-connections/{id}/credentials', [\App\Http\Controllers\Api\V1\DatabaseConnectionController::class, 'credentials']);
 
         Route::get('audit-logs', [\App\Http\Controllers\Api\V1\ActivityLogController::class, 'index']);
+        Route::post('audit-logs/purge', [\App\Http\Controllers\Api\V1\ActivityLogController::class, 'purge']);
 
         // Phase 3: Backup Engine
         Route::get('storage', [StorageController::class, 'index']);

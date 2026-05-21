@@ -49,7 +49,7 @@ export function Modal({ isOpen, onClose, title, description, children, variant =
       />
       
       {/* Content */}
-      <div className={`relative w-full max-w-md bg-slate-900 border ${borders[variant]} rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300`}>
+      <div className={`relative w-full max-w-md bg-slate-900 border ${borders[variant]} rounded-3xl shadow-2xl animate-in fade-in zoom-in duration-300`}>
         <div className="p-6">
           <div className="flex items-start gap-4">
             <div className={`h-12 w-12 rounded-2xl bg-slate-950 border ${borders[variant]} flex items-center justify-center shrink-0`}>

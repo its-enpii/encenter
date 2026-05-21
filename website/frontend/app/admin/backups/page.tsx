@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { DatabaseIcon, CloudIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from "@/components/admin/Icons";
+import { DatabaseIcon, CloudIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertCircleIcon } from "@/components/admin/Icons";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
 import { apiFetch } from "@/lib/api";
 
@@ -107,26 +107,27 @@ export default function BackupHistoryPage() {
     {
       header: "Actions",
       accessor: (item: BackupJob) => (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-1">
           {item.status === 'success' && item.gdrive_file_url && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-emerald-400 hover:text-emerald-300 gap-1.5"
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Open in Drive"
+              className="text-emerald-400 hover:text-emerald-300 px-2"
               onClick={() => window.open(item.gdrive_file_url, '_blank')}
             >
               <CloudIcon className="h-3.5 w-3.5" />
-              VIEW
             </Button>
           )}
           {item.status === 'failed' && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-rose-400 hover:text-rose-300"
+            <Button
+              variant="ghost"
+              size="sm"
+              title="View error logs"
+              className="text-rose-400 hover:text-rose-300 px-2"
               onClick={() => setSelectedError({ open: true, message: item.error_message })}
             >
-              LOGS
+              <AlertCircleIcon className="h-3.5 w-3.5" />
             </Button>
           )}
         </div>

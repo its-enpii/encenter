@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { PlusIcon, ServerIcon, PlayIcon, EyeIcon } from "@/components/admin/Icons";
+import { PlusIcon, ServerIcon, PlayIcon, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/Icons";
 import { Server } from "@/types/admin";
 import { ConfirmDialog, AlertDialog } from "@/components/admin/ui/Dialog";
 import { CredentialModal } from "@/components/admin/ui/CredentialModal";
@@ -158,11 +158,12 @@ export default function ServersPage() {
     {
       header: "Actions",
       accessor: (item: Server) => (
-        <div className="flex justify-end gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-emerald-400 hover:text-emerald-300"
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Test connection"
+            className="text-emerald-400 hover:text-emerald-300 px-2"
             onClick={() => handleTestConnection(item.id)}
             isLoading={testingId === item.id}
           >
@@ -171,25 +172,26 @@ export default function ServersPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
+            title="View credentials"
+            className="text-purple-400 hover:text-purple-300 px-2"
             onClick={() => handleRevealCredential(item.id)}
             isLoading={revealLoadingId === item.id}
           >
             <EyeIcon className="h-3.5 w-3.5" />
-            VIEW
           </Button>
           <Link href={`/admin/servers/${item.id}/edit`}>
-            <Button variant="ghost" size="sm">
-              Edit
+            <Button variant="ghost" size="sm" title="Edit" className="px-2">
+              <PencilIcon className="h-3.5 w-3.5" />
             </Button>
           </Link>
           <Button
             variant="ghost"
             size="sm"
-            className="text-rose-400 hover:text-rose-300"
+            title="Delete"
+            className="text-rose-400 hover:text-rose-300 px-2"
             onClick={() => setDeleteDialog({ open: true, serverId: item.id })}
           >
-            Delete
+            <TrashIcon className="h-3.5 w-3.5" />
           </Button>
         </div>
       ),

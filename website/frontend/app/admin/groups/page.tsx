@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Button } from "@/components/admin/ui/Core";
-import { PlusIcon, LayoutGridIcon } from "@/components/admin/Icons";
+import { PlusIcon, LayoutGridIcon, PencilIcon, TrashIcon } from "@/components/admin/Icons";
 import { Modal, AlertDialog } from "@/components/admin/ui/Dialog";
 import { Input, Textarea } from "@/components/admin/ui/Form";
 import { apiFetch } from "@/lib/api";
@@ -72,9 +72,13 @@ export default function GroupsPage() {
     {
       header: "Actions",
       accessor: (item: ServerGroup) => (
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => handleEditClick(item)}>Edit</Button>
-          <Button variant="ghost" size="sm" className="text-rose-400" onClick={() => handleDeleteClick(item.id)}>Delete</Button>
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="sm" title="Edit" className="px-2" onClick={() => handleEditClick(item)}>
+            <PencilIcon className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" title="Delete" className="text-rose-400 hover:text-rose-300 px-2" onClick={() => handleDeleteClick(item.id)}>
+            <TrashIcon className="h-3.5 w-3.5" />
+          </Button>
         </div>
       ),
       align: "right" as const
