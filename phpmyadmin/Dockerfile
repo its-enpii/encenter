@@ -1,9 +1,11 @@
 FROM php:8.3-apache
 
-# Install mysqli, mbstring, zip, xml - required by phpMyAdmin
-RUN docker-php-ext-install mysqli mbstring
-RUN apt-get update && apt-get install -y libzip-dev libonig-dev libxml2-dev \
-    && docker-php-ext-install zip xml \
+# Install system deps first, then PHP extensions
+RUN apt-get update && apt-get install -y \
+    libzip-dev \
+    libonig-dev \
+    libxml2-dev \
+    && docker-php-ext-install mysqli mbstring zip xml \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache mod_rewrite
