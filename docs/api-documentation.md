@@ -585,7 +585,7 @@ Endpoint ini digunakan untuk membersihkan subfolder lama di Google Drive secara 
 - **Headers:**
   ```http
   Content-Type: application/json
-  Authorization: Bearer <your_token_or_api_key>
+  X-API-Key: <your_api_key> (atau Authorization: Bearer <your_token>)
   ```
 - **Response Sukses (HTTP 200):**
   ```json
