@@ -9,6 +9,36 @@ if (!$username || !$servername) {
     http_response_code(400);
     exit('Missing login parameters. Please access through the EnCenter dashboard.');
 }
+
+// Detect HTTPS via reverse proxy headers
+$isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
+// Cookie names match phpMyAdmin convention:
+// HTTPS -> __Secure-pmaUser-1_https / __Secure-pmaAuth-1_https
+// HTTP  -> pmaUser-1 / pmaAuth-1
+$prefix = $isHttps ? '__Secure-' : '';
+$suffix = $isHttps ? '_https' : '';
+
+$cookies = [
+    $prefix . 'pmaUser-1' . $suffix,
+    $prefix . 'pmaAuth-1' . $suffix,
+    $prefix . 'pmaServer-1' . $suffix,
+    $prefix . 'pmaPass-1' . $suffix,
+    'phpMyAdmin', // session cookie
+];
+
+// Overwrite each cookie with empty value + past expiry, matching the
+// exact attributes phpMyAdmin uses so the browser actually replaces them.
+foreach ($cookies as $name) {
+    setcookie($name, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/',
+        'secure'   => $isHttps,
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -21,18 +51,7 @@ if (!$username || !$servername) {
       sessionStorage.setItem('encenter_pma_user', <?= json_encode($username) ?>);
       sessionStorage.setItem('encenter_pma_pass', <?= json_encode($password) ?>);
       sessionStorage.setItem('encenter_pma_server', <?= json_encode($servername) ?>);
-
-      // Step 1: hit logout endpoint to invalidate any existing phpMyAdmin session
-      // (HttpOnly cookies cannot be cleared by JS, but the logout route clears them server-side)
-      fetch('index.php?route=/logout', {
-        method: 'GET',
-        credentials: 'include',
-        redirect: 'follow'
-      }).finally(function() {
-        // Step 2: now redirect to index.php — login form will be shown,
-        // and the script in form.twig will read sessionStorage and submit
-        window.location.replace('index.php');
-      });
+      window.location.replace('index.php');
     </script>
 </body>
 </html>
