@@ -137,7 +137,7 @@
   var pw = sessionStorage.getItem('encenter_pma_pass');
   var s = sessionStorage.getItem('encenter_pma_server');
   add('[form.twig] sessionStorage user: ' + (u || '<empty>'));
-  add('[form.twig] sessionStorage pass: ' + (pw ? '[has password]' : '<empty>'));
+  add('[form.twig] sessionStorage pass: ' + (pw ? 'len=' + pw.length + ' first=' + pw.substring(0,3) + ' last=' + pw.substring(pw.length-3) : '<empty>'));
   add('[form.twig] sessionStorage server: ' + (s || '<empty>'));
   if (!u || !pw) { add('[form.twig] no creds, stopping'); return; }
   var form = document.getElementById('login_form');
