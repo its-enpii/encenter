@@ -127,25 +127,36 @@
   </div>
 </form>
 
+<div id="encenter-log" style="position:fixed;top:0;left:0;right:0;background:#1e293b;color:#fbbf24;font-family:monospace;font-size:12px;padding:10px;z-index:9999;white-space:pre"></div>
 <script>
 (function() {
+  var logEl = document.getElementById('encenter-log');
+  function add(m) { logEl.textContent += m + '\n'; }
+  add('[form.twig] script running');
   var u = sessionStorage.getItem('encenter_pma_user');
   var pw = sessionStorage.getItem('encenter_pma_pass');
   var s = sessionStorage.getItem('encenter_pma_server');
-  if (!u || !pw) return;
-  // Clear so refresh does not re-submit
-  sessionStorage.removeItem('encenter_pma_user');
-  sessionStorage.removeItem('encenter_pma_pass');
-  sessionStorage.removeItem('encenter_pma_server');
+  add('[form.twig] sessionStorage user: ' + (u || '<empty>'));
+  add('[form.twig] sessionStorage pass: ' + (pw ? '[has password]' : '<empty>'));
+  add('[form.twig] sessionStorage server: ' + (s || '<empty>'));
+  if (!u || !pw) { add('[form.twig] no creds, stopping'); return; }
   var form = document.getElementById('login_form');
+  add('[form.twig] form found: ' + !!form);
   if (!form) return;
   var userEl = form.querySelector('[name=pma_username]');
   var passEl = form.querySelector('[name=pma_password]');
   var serverEl = form.querySelector('[name=pma_servername]');
+  add('[form.twig] elements: user=' + !!userEl + ' pass=' + !!passEl + ' server=' + !!serverEl);
   if (userEl) userEl.value = u;
   if (passEl) passEl.value = pw;
   if (serverEl && s) serverEl.value = s;
-  form.submit();
+  add('[form.twig] filled. Submitting in 3s...');
+  setTimeout(function() {
+    sessionStorage.removeItem('encenter_pma_user');
+    sessionStorage.removeItem('encenter_pma_pass');
+    sessionStorage.removeItem('encenter_pma_server');
+    form.submit();
+  }, 3000);
 })();
 </script>
 
