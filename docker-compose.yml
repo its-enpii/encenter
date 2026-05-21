@@ -155,6 +155,7 @@
       - ./phpmyadmin/autologin.php:/var/www/html/autologin.php
     environment:
       - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
+      - PMA_ABSOLUTE_URI=${NEXT_PUBLIC_PMA_URL}/
     networks:
       - agent-network
       - web-network
@@ -165,4 +166,5 @@ networks:
     name: agent-network
   web-network:
     external: true
+
 
