@@ -113,26 +113,27 @@ export default function VaultPage() {
     }
   };
 
-  const handleOpenPma = (item: DatabaseConnection) => {
-    const form = document.createElement("form");
-    form.action = `${PMA_URL}/autologin.php`;
-    form.method = "POST";
-    form.target = "_blank";
-    const fields = {
-      pma_username: item.db_username || "",
-      pma_password: item.db_password || "",
-      pma_servername: `${item.server?.host || item.db_host}:${item.db_port}`
-    };
-    Object.entries(fields).forEach(([key, value]) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = key;
-      input.value = value;
-      form.appendChild(input);
-    });
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
+  const [pmaLoadingId, setPmaLoadingId] = useState<string | null>(null);
+
+  const handleOpenPma = async (item: DatabaseConnection) => {
+    setPmaLoadingId(item.id);
+    try {
+      const response = await apiFetch(`/database-connections/${item.id}/reveal`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Failed to decrypt credentials");
+      const cred = data.data;
+      const servername = `${item.server?.host || cred.db_host}:${cred.db_port}`;
+      const params = new URLSearchParams({
+        pma_username: cred.db_username,
+        pma_password: cred.db_password,
+        pma_servername: servername,
+      });
+      window.open(`${PMA_URL}/autologin.php?${params.toString()}`, "_blank");
+    } catch (err: any) {
+      setTestResult({ open: true, title: "PMA Launch Failed", message: err.message || "Failed to open phpMyAdmin.", variant: "danger" });
+    } finally {
+      setPmaLoadingId(null);
+    }
   };
 
   const handleRevealCredential = async (id: string) => {
@@ -213,6 +214,7 @@ export default function VaultPage() {
               size="sm" 
               className="text-amber-400 hover:text-amber-300 flex items-center gap-1"
               onClick={() => handleOpenPma(item)}
+              isLoading={pmaLoadingId === item.id}
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -315,4 +317,3 @@ export default function VaultPage() {
     </div>
   );
 }
-
