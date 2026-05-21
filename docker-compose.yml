@@ -153,10 +153,9 @@
       - "8081:80"
     volumes:
       - ./phpmyadmin/autologin.php:/var/www/html/autologin.php
-      - ./phpmyadmin/config.inc.php:/etc/phpmyadmin/conf.d/encenter.php
+      - ./phpmyadmin/config.inc.php:/var/www/html/config.user.inc.php
     environment:
       - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
-      - PMA_ABSOLUTE_URI=${NEXT_PUBLIC_PMA_URL}/
     networks:
       - agent-network
       - web-network
