@@ -123,12 +123,26 @@ export default function VaultPage() {
       if (!response.ok) throw new Error(data.message || "Failed to decrypt credentials");
       const cred = data.data;
       const servername = `${item.server?.host || cred.db_host}:${cred.db_port}`;
-      const params = new URLSearchParams({
+      // POST form to autologin.php in a new tab so credentials never appear in URL
+      const form = document.createElement("form");
+      form.action = `${PMA_URL}/autologin.php`;
+      form.method = "POST";
+      form.target = "_blank";
+      const fields: Record<string, string> = {
         pma_username: cred.db_username,
         pma_password: cred.db_password,
         pma_servername: servername,
+      };
+      Object.entries(fields).forEach(([key, value]) => {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = key;
+        input.value = value;
+        form.appendChild(input);
       });
-      window.open(`${PMA_URL}/autologin.php?${params.toString()}`, "_blank");
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
     } catch (err: any) {
       setTestResult({ open: true, title: "PMA Launch Failed", message: err.message || "Failed to open phpMyAdmin.", variant: "danger" });
     } finally {

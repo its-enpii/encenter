@@ -1,13 +1,34 @@
 <?php
 declare(strict_types=1);
 
-$username   = $_GET['pma_username'] ?? '';
-$password   = $_GET['pma_password'] ?? '';
-$servername = $_GET['pma_servername'] ?? '';
+// Accept credentials via POST (preferred, password not in URL)
+// or GET as fallback for compatibility
+$username   = $_POST['pma_username']   ?? $_GET['pma_username']   ?? '';
+$password   = $_POST['pma_password']   ?? $_GET['pma_password']   ?? '';
+$servername = $_POST['pma_servername'] ?? $_GET['pma_servername'] ?? '';
 
 if (!$username || !$servername) {
     http_response_code(400);
     exit('Missing login parameters. Please access through the EnCenter dashboard.');
+}
+
+// Clear any existing phpMyAdmin auth cookies so a previous login does not stick
+$cookiesToClear = ['pmaUser-1', 'pmaAuth-1', 'phpMyAdmin'];
+foreach ($cookiesToClear as $name) {
+    setcookie($name, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    // Also try the __Secure- prefixed variants used over HTTPS
+    setcookie('__Secure-' . $name, '', [
+        'expires'  => time() - 3600,
+        'path'     => '/',
+        'secure'   => true,
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
 }
 ?>
 <!DOCTYPE html>
