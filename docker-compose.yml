@@ -1,4 +1,4 @@
-services:
+﻿services:
   envault-backend:
     build: ./website/backend
     container_name: envault-backend
@@ -151,6 +151,8 @@ services:
     restart: unless-stopped
     ports:
       - "8081:80"
+    volumes:
+      - ./phpmyadmin/autologin.php:/var/www/html/autologin.php
     environment:
       - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
     networks:
@@ -163,3 +165,4 @@ networks:
     name: agent-network
   web-network:
     external: true
+
