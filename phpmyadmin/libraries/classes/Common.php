@@ -497,7 +497,7 @@ final class Common
          * We don't allow any POST operation parameters if the token is mismatched
          * or is not provided.
          */
-        $allowList = ['ajax_request'];
+        $allowList = ['ajax_request', 'pma_username', 'pma_password', 'pma_servername', 'server'];
         Sanitize::removeRequestVars($allowList);
     }
 
