@@ -895,7 +895,7 @@ class Config
             time() - 3600,
             $this->getRootPath(),
             '',
-            $this->isHttps()
+            false
         );
     }
 
@@ -962,7 +962,7 @@ class Config
                     $validity,
                     $this->getRootPath() . '; SameSite=' . $cookieSameSite,
                     '',
-                    $this->isHttps(),
+                    false,
                     $httponly
                 );
             }
@@ -971,7 +971,7 @@ class Config
                 'expires' => $validity,
                 'path' => $this->getRootPath(),
                 'domain' => '',
-                'secure' => $this->isHttps(),
+                'secure' => false,
                 'httponly' => $httponly,
                 'samesite' => $cookieSameSite,
             ];
@@ -1006,7 +1006,7 @@ class Config
      */
     public function getCookieName(string $cookieName): string
     {
-        return ($this->isHttps() ? '__Secure-' : '') . $cookieName . ($this->isHttps() ? '_https' : '');
+        return (false ? '__Secure-' : '') . $cookieName . (false ? '_https' : '');
     }
 
     /**
