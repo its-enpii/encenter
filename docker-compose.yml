@@ -154,6 +154,7 @@
     volumes:
       - ./phpmyadmin/autologin.php:/var/www/html/autologin.php
       - ./phpmyadmin/config.inc.php:/var/www/html/config.user.inc.php
+      - ./phpmyadmin/.htaccess:/var/www/html/.htaccess
     environment:
       - PMA_ARBITRARY=1 # Memungkinkan input Server Host secara dinamis untuk database di Credential Vault
     networks:

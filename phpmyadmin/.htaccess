@@ -1,0 +1,6 @@
+# Override PHP session cookie settings for reverse proxy HTTPS setup.
+# phpMyAdmin detects X-Forwarded-Proto: https and enables session.cookie_secure,
+# which breaks cookie delivery over internal HTTP transport.
+# This .htaccess override runs before any PHP code including phpMyAdmin itself.
+php_value session.cookie_secure 0
+php_value session.cookie_samesite Lax
