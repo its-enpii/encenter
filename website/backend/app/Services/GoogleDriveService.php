@@ -54,8 +54,8 @@ class GoogleDriveService
         $this->client->setAccessToken([
             'access_token' => $storage->access_token,
             'refresh_token' => $storage->refresh_token,
-            'expires_in' => $storage->expires_at->timestamp - now()->timestamp,
-            'created' => $storage->updated_at->timestamp
+            'expires_in' => $storage->expires_at ? $storage->expires_at->timestamp - now()->timestamp : 0,
+            'created' => $storage->updated_at ? $storage->updated_at->timestamp : now()->timestamp
         ]);
 
         if ($this->client->isAccessTokenExpired()) {
