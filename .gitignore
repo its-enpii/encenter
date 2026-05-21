@@ -5,6 +5,7 @@
 .DS_Store
 Thumbs.db
 *.log
+*.ps1
 
 # Infrastructure
 openclaw/config/
