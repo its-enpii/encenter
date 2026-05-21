@@ -895,7 +895,7 @@ class Config
             time() - 3600,
             $this->getRootPath(),
             '',
-            false
+            $this->isHttps()
         );
     }
 
@@ -962,7 +962,7 @@ class Config
                     $validity,
                     $this->getRootPath() . '; SameSite=' . $cookieSameSite,
                     '',
-                    false,
+                    $this->isHttps(),
                     $httponly
                 );
             }

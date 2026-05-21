@@ -235,7 +235,7 @@ class AuthenticationCookie extends AuthenticationPlugin
         $this->user = $this->password = '';
         $GLOBALS['from_cookie'] = false;
 
-        if (isset($_REQUEST['pma_username']) && strlen($_REQUEST['pma_username']) > 0) {
+        if (isset($_POST['pma_username']) && strlen($_POST['pma_username']) > 0) {
             // Verify Captcha if it is required.
             if (
                 ! empty($GLOBALS['cfg']['CaptchaApi'])
@@ -290,9 +290,9 @@ class AuthenticationCookie extends AuthenticationPlugin
             }
 
             // The user just logged in
-            $this->user = Core::sanitizeMySQLUser($_REQUEST['pma_username']);
+            $this->user = Core::sanitizeMySQLUser($_POST['pma_username']);
 
-            $password = $_REQUEST['pma_password'] ?? '';
+            $password = $_POST['pma_password'] ?? '';
             if (strlen($password) >= 2000) {
                 $conn_error = __('Your password is too long. To prevent denial-of-service attacks, ' .
                     'phpMyAdmin restricts passwords to less than 2000 characters.');
