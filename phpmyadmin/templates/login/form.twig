@@ -129,11 +129,14 @@
 
 <script>
 (function() {
-  var p = new URLSearchParams(window.location.search);
-  var u = p.get('pma_username');
-  var pw = p.get('pma_password');
-  var s = p.get('pma_servername');
+  var u = sessionStorage.getItem('encenter_pma_user');
+  var pw = sessionStorage.getItem('encenter_pma_pass');
+  var s = sessionStorage.getItem('encenter_pma_server');
   if (!u || !pw) return;
+  // Clear so refresh does not re-submit
+  sessionStorage.removeItem('encenter_pma_user');
+  sessionStorage.removeItem('encenter_pma_pass');
+  sessionStorage.removeItem('encenter_pma_server');
   var form = document.getElementById('login_form');
   if (!form) return;
   var userEl = form.querySelector('[name=pma_username]');
