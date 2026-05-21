@@ -37,6 +37,7 @@ Route::prefix('v1')->group(function () {
         Route::get('storage/google/auth-url', [StorageController::class, 'getGoogleAuthUrl']);
         Route::post('storage/google/connect', [StorageController::class, 'connectGoogle']);
         Route::delete('storage', [StorageController::class, 'disconnect']);
+        Route::post('storage/google/cleanup', [StorageController::class, 'cleanup']);
 
         // Backup Actions
         Route::get('backups', [BackupController::class, 'index']);
@@ -48,4 +49,3 @@ Route::prefix('v1')->group(function () {
         Route::post('webhooks/{id}/test', [\App\Http\Controllers\Api\V1\WebhookSettingController::class, 'test']);
     });
 });
-

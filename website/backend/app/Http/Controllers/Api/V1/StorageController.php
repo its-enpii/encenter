@@ -153,4 +153,40 @@ class StorageController extends Controller
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Clean up Google Drive folders older than 7 days.
+     * Can be triggered by cron/n8n.
+     */
+    public function cleanup(Request $request)
+    {
+        try {
+            $storage = UserStorage::where('user_id', Auth::id())
+                ->where('provider', 'google_drive')
+                ->whereRaw('"is_active" = true')
+                ->first();
+
+            if (!$storage || !$storage->folder_id) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Active Google Drive storage not configured.'
+                ], 404);
+            }
+
+            $this->googleDrive->setAccessToken($storage);
+            $deleted = $this->googleDrive->deleteOldFolders($storage->folder_id, 7);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Storage cleanup completed.',
+                'deleted_folders' => $deleted
+            ]);
+        } catch (Exception $e) {
+            Log::error("Storage Cleanup Error: " . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

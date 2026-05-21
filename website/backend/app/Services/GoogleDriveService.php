@@ -207,4 +207,47 @@ class GoogleDriveService
             throw new Exception("Google Drive API Error: " . $e->getMessage());
         }
     }
+
+    /**
+     * Delete subfolders older than a given number of days.
+     * Expects folder names to be in YYYYMMDD format.
+     */
+    public function deleteOldFolders(string $rootFolderId, int $days = 7): array
+    {
+        $driveService = new Drive($this->client);
+        $cutoffDate = now()->subDays($days)->format('Ymd');
+        $deleted = [];
+
+        // List all subfolders inside the root folder
+        $response = $driveService->files->listFiles([
+            'q' => "mimeType = 'application/vnd.google-apps.folder' and trashed = false and '{$rootFolderId}' in parents",
+            'spaces' => 'drive',
+            'fields' => 'files(id, name)',
+        ]);
+
+        foreach ($response->files as $folder) {
+            // Check if folder name is YYYYMMDD format and older than cutoff
+            if (preg_match('/^\d{8}$/', $folder->name)) {
+                if ($folder->name < $cutoffDate) {
+                    try {
+                        $driveService->files->delete($folder->id);
+                        $deleted[] = [
+                            'id' => $folder->id,
+                            'name' => $folder->name,
+                            'status' => 'deleted'
+                        ];
+                    } catch (Exception $e) {
+                        $deleted[] = [
+                            'id' => $folder->id,
+                            'name' => $folder->name,
+                            'status' => 'failed',
+                            'error' => $e->getMessage()
+                        ];
+                    }
+                }
+            }
+        }
+
+        return $deleted;
+    }
 }

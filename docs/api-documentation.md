@@ -574,7 +574,42 @@ Digunakan untuk mendaftarkan URL n8n yang akan menerima notifikasi otomatis keti
     }
     ```
 
-### 3.7. Log Aktivitas / Audit Logs (`/audit-logs`)
+### 3.7. Penyimpanan Cloud & Pemeliharaan (`/storage`)
+
+#### A. Bersihkan Backup Drive yang Berumur Lebih dari 7 Hari (Cleanup)
+
+Endpoint ini digunakan untuk membersihkan subfolder lama di Google Drive secara otomatis (dapat dipanggil via Cron/n8n daily). Script akan melacak folder berformat nama `YYYYMMDD` di dalam folder root backup, membandingkan dengan tanggal cutoff (7 hari lalu), dan menghapus yang sudah kedaluwarsa beserta seluruh isinya.
+
+- **Endpoint:** `POST /storage/google/cleanup`
+- **Autentikasi:** Diperlukan (API Key / Sanctum Token)
+- **Headers:**
+  ```http
+  Content-Type: application/json
+  Authorization: Bearer <your_token_or_api_key>
+  ```
+- **Response Sukses (HTTP 200):**
+  ```json
+  {
+    "status": "success",
+    "message": "Storage cleanup completed.",
+    "deleted_folders": [
+      {
+        "id": "1EC3Vh8rBJk2...",
+        "name": "20260514",
+        "status": "deleted"
+      }
+    ]
+  }
+  ```
+- **Response Gagal (HTTP 404 - Belum Konek Google Drive):**
+  ```json
+  {
+    "status": "error",
+    "message": "Active Google Drive storage not configured."
+  }
+  ```
+
+### 3.8. Log Aktivitas / Audit Logs (`/audit-logs`)
 Digunakan untuk merekam seluruh jejak aktivitas pengguna di dalam Vault Credential dan jalannya pencadangan sistem.
 
 #### A. List Audit Logs
