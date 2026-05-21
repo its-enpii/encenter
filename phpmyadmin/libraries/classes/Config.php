@@ -971,7 +971,7 @@ class Config
                 'expires' => $validity,
                 'path' => $this->getRootPath(),
                 'domain' => '',
-                'secure' => false,
+                'secure' => $this->isHttps(),
                 'httponly' => $httponly,
                 'samesite' => $cookieSameSite,
             ];
@@ -1006,7 +1006,7 @@ class Config
      */
     public function getCookieName(string $cookieName): string
     {
-        return (false ? '__Secure-' : '') . $cookieName . (false ? '_https' : '');
+        return ($this->isHttps() ? '__Secure-' : '') . $cookieName . ($this->isHttps() ? '_https' : '');
     }
 
     /**
