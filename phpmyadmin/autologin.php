@@ -7,9 +7,12 @@ ini_set('session.cookie_samesite', 'Lax');
 session_name('phpMyAdmin');
 session_start();
 
-$username = $_POST['pma_username'] ?? '';
-$password = $_POST['pma_password'] ?? '';
-$server   = $_POST['pma_servername'] ?? '';
+// Accept credentials via GET (opened as new tab from dashboard)
+// All subsequent requests stay same-origin (pma.domain -> pma.domain)
+// so session cookie is sent correctly without cross-origin restrictions.
+$username = $_GET['pma_username'] ?? '';
+$password = $_GET['pma_password'] ?? '';
+$server   = $_GET['pma_servername'] ?? '';
 
 if ($username && $server) {
     if (empty($_SESSION[' PMA_token '])) {
