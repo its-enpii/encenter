@@ -127,49 +127,24 @@
   </div>
 </form>
 
-<div id="encenter-log" style="position:fixed;top:0;left:0;right:0;background:#1e293b;color:#fbbf24;font-family:monospace;font-size:11px;padding:10px;z-index:9999;white-space:pre;max-height:90vh;overflow:auto"></div>
 <script>
 (function() {
-  var logEl = document.getElementById('encenter-log');
-  function add(m) { logEl.textContent += m + '\n'; }
   var u = sessionStorage.getItem('encenter_pma_user');
   var pw = sessionStorage.getItem('encenter_pma_pass');
   var s = sessionStorage.getItem('encenter_pma_server');
-  if (!u || !pw) { add('[form] no creds'); return; }
+  if (!u || !pw) return;
   sessionStorage.removeItem('encenter_pma_user');
   sessionStorage.removeItem('encenter_pma_pass');
   sessionStorage.removeItem('encenter_pma_server');
   var form = document.getElementById('login_form');
-  if (!form) { add('[form] form not found'); return; }
-  add('[form] action: ' + form.action);
-  add('[form] method: ' + form.method);
-  // List all form fields
-  var fields = form.querySelectorAll('input');
-  fields.forEach(function(f) {
-    add('  field: ' + f.name + ' = ' + (f.type === 'password' ? '[password]' : f.value));
-  });
+  if (!form) return;
   var userEl = form.querySelector('[name=pma_username]');
   var passEl = form.querySelector('[name=pma_password]');
   var serverEl = form.querySelector('[name=pma_servername]');
   if (userEl) userEl.value = u;
   if (passEl) passEl.value = pw;
   if (serverEl && s) serverEl.value = s;
-  add('[form] submitting via fetch...');
-  var fd = new FormData(form);
-  fetch(form.action, { method: 'POST', body: fd, redirect: 'manual' })
-    .then(function(r) {
-      add('[fetch] status: ' + r.status + ' (' + r.type + ')');
-      add('[fetch] url: ' + r.url);
-      return r.text();
-    })
-    .then(function(body) {
-      add('[fetch] body length: ' + body.length);
-      add('[fetch] body excerpt:');
-      add(body.substring(0, 2000));
-    })
-    .catch(function(e) {
-      add('[fetch] error: ' + e.message);
-    });
+  form.submit();
 })();
 </script>
 
