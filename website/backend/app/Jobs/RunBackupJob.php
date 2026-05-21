@@ -51,7 +51,9 @@ class RunBackupJob implements ShouldQueue
         $label = preg_replace('/[^A-Za-z0-9_\-]/', '_', $dbConn->label);
         $targetDb = $dbConn->db_name ? preg_replace('/[^A-Za-z0-9_\-]/', '_', $dbConn->db_name) : 'ALL_DATABASES';
         $timestamp = date('Ymd_His');
-        $tempFileName = "{$label}_{$targetDb}_{$timestamp}.sql.gz";
+        $isAllDatabases = !$dbConn->db_name;
+        $extension = $isAllDatabases ? "tar.gz" : "sql.gz";
+        $tempFileName = "{$label}_{$targetDb}_{$timestamp}.{$extension}";
         $remoteTempPath = "/tmp/{$tempFileName}";
         $localTempPath = storage_path("app/backups/{$tempFileName}");
 
@@ -65,17 +67,33 @@ class RunBackupJob implements ShouldQueue
 
         try {
             // 1. Prepare mysqldump command
-            $dbNameParam = $dbConn->db_name ? escapeshellarg($dbConn->db_name) : '--all-databases';
-            $dumpCommand = sprintf(
-                "MYSQL_PWD=%s mysqldump -h %s -P %s -u %s %s 2> /tmp/dump_err.log | gzip > %s",
-                escapeshellarg($dbConn->db_password),
-                escapeshellarg($dbConn->db_host),
-                escapeshellarg($dbConn->db_port ?? 3306),
-                escapeshellarg($dbConn->db_username),
-                $dbNameParam,
-                escapeshellarg($remoteTempPath)
-            );
+            $pwd = escapeshellarg($dbConn->db_password);
+            $host = escapeshellarg($dbConn->db_host);
+            $port = escapeshellarg($dbConn->db_port ?? 3306);
+            $user = escapeshellarg($dbConn->db_username);
+            $remoteTmpDir = "/tmp/encenter_dump_" . uniqid();
+            $errLog = "/tmp/dump_err_" . uniqid() . ".log";
 
+            if ($isAllDatabases) {
+                // Dump each database into its own .sql.gz, then bundle into one .tar.gz
+                $dumpCommand = sprintf(
+                    "set -e; mkdir -p %s; " .
+                    "DBS=\$(MYSQL_PWD=%s mysql -h %s -P %s -u %s -N -B -e \"SHOW DATABASES;\" 2> %s | grep -Ev " . escapeshellarg('^(information_schema|performance_schema|mysql|sys)$') . "); " .
+                    "for DB in \$DBS; do MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s \"\$DB\" 2>> %s | gzip > %s/\${DB}.sql.gz; done; " .
+                    "tar -czf %s -C %s . && rm -rf %s",
+                    escapeshellarg($remoteTmpDir),
+                    $pwd, $host, $port, $user, escapeshellarg($errLog),
+                    $pwd, $host, $port, $user, escapeshellarg($errLog), escapeshellarg($remoteTmpDir),
+                    escapeshellarg($remoteTempPath), escapeshellarg($remoteTmpDir), escapeshellarg($remoteTmpDir)
+                );
+            } else {
+                $dbNameParam = escapeshellarg($dbConn->db_name);
+                $dumpCommand = sprintf(
+                    "MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s %s 2> %s | gzip > %s",
+                    $pwd, $host, $port, $user, $dbNameParam,
+                    escapeshellarg($errLog), escapeshellarg($remoteTempPath)
+                );
+            }
             // 2. Execute on remote server
             $sshService->execute($server, $dumpCommand);
 
