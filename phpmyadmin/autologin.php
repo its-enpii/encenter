@@ -1,12 +1,8 @@
 <?php
 declare(strict_types=1);
 
-// Override session cookie flags at PHP INI level BEFORE session_start().
-// phpMyAdmin Docker sets session.cookie_secure=1 when X-Forwarded-Proto: https
-// is detected. We force it off so the cookie works over internal HTTP transport.
 ini_set('session.cookie_secure', '0');
 ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.cookie_httponly', '1');
 
 session_name('phpMyAdmin');
 session_start();
@@ -25,7 +21,6 @@ if ($username && $server) {
     <html>
     <head><title>Connecting to phpMyAdmin...</title></head>
     <body>
-        <p>Redirecting to phpMyAdmin, please wait...</p>
         <form id="autologin" action="index.php?route=/" method="POST">
             <input type="hidden" name="set_session"    value="<?php echo htmlspecialchars(session_id()); ?>">
             <input type="hidden" name="token"          value="<?php echo htmlspecialchars($token); ?>">
