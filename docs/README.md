@@ -14,7 +14,7 @@ Dokumentasi ini dibagi menjadi beberapa bagian agar mudah dinavigasi sesuai kebu
 | [04-backend.md](04-backend.md) | Detail backend Laravel (controllers, services, jobs, middleware) |
 | [05-frontend.md](05-frontend.md) | Detail frontend Next.js (pages, components, lib) |
 | [06-database-schema.md](06-database-schema.md) | Schema database, relasi tabel, dan migrasi |
-| [07-services.md](07-services.md) | Layanan pendukung (phpMyAdmin, n8n, Evolution API, OpenClaw) |
+| [07-services.md](07-services.md) | Layanan pendukung (phpMyAdmin, n8n, Evolution API) plus operator AI OpenClaw |
 | [08-deployment.md](08-deployment.md) | Panduan deployment ke production |
 | [09-security.md](09-security.md) | Catatan keamanan dan praktik enkripsi |
 | [10-troubleshooting.md](10-troubleshooting.md) | Troubleshooting umum dan FAQ |
@@ -37,9 +37,7 @@ Dokumentasi ini dibagi menjadi beberapa bagian agar mudah dinavigasi sesuai kebu
 | Database App | PostgreSQL 15 (via Docker) |
 | Storage Backup | Google Drive (OAuth2) |
 | Reverse Proxy Backend | Nginx (Alpine) |
-| Database Browser | phpMyAdmin (custom build) |
-| Automation | n8n (terintegrasi) |
-| WhatsApp Bridge | Evolution API (Postgres + Redis) |
-| Agent Gateway | OpenClaw |
+| Layanan Pendukung | n8n (automation) · Evolution API (WhatsApp) · phpMyAdmin (DB browser) |
+| Operator AI | OpenClaw — persona Enpii AI yang menggerakkan stack |
 
 > Catatan: `APP_KEY` Laravel dipakai untuk enkripsi semua kredensial sensitif. Hilang APP_KEY = hilang akses ke seluruh data terenkripsi. Backup APP_KEY adalah prioritas tertinggi.

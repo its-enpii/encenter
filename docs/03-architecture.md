@@ -72,7 +72,7 @@ EnCenter berjalan di dalam 2 Docker network:
 
 ### encenter-openclaw
 - Image custom dari `openclaw/Dockerfile` — `node:24-slim`, `npm i -g openclaw@latest`.
-- Listen di port `18789`. Dipakai sebagai gateway untuk AI agent OpenClaw (terhubung ke workspace).
+- Listen di port `18789`. Berperan sebagai **operator AI** stack (Enpii AI). Tidak memanggil API EnCenter langsung — komunikasi satu arah masuk ke OpenClaw selalu lewat n8n. Detail konseptual ada di [01-overview.md](01-overview.md#operator-openclaw-enpii-ai).
 
 ## Pola Autentikasi
 

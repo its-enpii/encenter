@@ -145,24 +145,31 @@ CACHE_REDIS_URI=redis://redis:6379
 
 ## OpenClaw (`encenter-openclaw`)
 
-### Tujuan
-Gateway agent OpenClaw. Disertakan untuk integrasi AI agent / IDE assistant yang berkomunikasi via port `18789`.
+OpenClaw bukan layanan pendukung dalam arti tradisional. Dia adalah **persona AI Enpii** yang berperan sebagai operator stack — versi digital dari pemilik repo yang hadir 24/7 untuk memantau, merespons, dan mengeksekusi tugas-tugas yang biasanya butuh manusia. Detail konseptual dijelaskan di [01-overview.md](01-overview.md#operator-openclaw-enpii-ai); section ini hanya membahas sisi infrastrukturnya.
+
+### Posisi di stack
+
+OpenClaw **tidak** memanggil API EnCenter langsung. Akses ke API memang dibatasi pada dua klien resmi: frontend Next.js (Sanctum) dan workflow n8n (X-API-Key). OpenClaw tidak termasuk salah satunya.
+
+Jalur komunikasi yang valid hanya satu: **lewat n8n**. Workflow n8n menerima trigger (mis. webhook backup dari Laravel, atau pesan WhatsApp via Evolution), lalu mengirim HTTP request ke OpenClaw di `:18789`. Jika OpenClaw perlu beraksi balik (membalas pesan, men-trigger backup, dll.), aksi tersebut disalurkan kembali lewat workflow n8n yang tepat.
+
+Aplikasi tetap berfungsi penuh tanpa container ini. Dengan dia, alur otomasi (jawab WA, push notifikasi cerdas, intervensi backup gagal) jadi terasa hidup.
 
 ### Image
 - Dibuild dari `openclaw/Dockerfile`.
 - Base: `node:24-slim` + git, python3, build-essential, ca-certificates.
 - `npm i -g openclaw@latest`.
-- `CMD ["openclaw", "gateway"]`.
+- `CMD ["openclaw", "gateway"]` — meng-expose HTTP gateway di port 18789.
 
 ### Volume
-- `./openclaw/config:/root/.openclaw` (gitignored)
-- `./openclaw/workspace:/root/.openclaw/workspace` — berisi profile agent, skills, contacts. Lihat `openclaw/workspace/AGENTS.md`, `IDENTITY.md`, dst.
+- `./openclaw/config:/root/.openclaw` (gitignored — runtime state, log).
+- `./openclaw/workspace:/root/.openclaw/workspace` — definisi persona dan skill set.
+
+> Isi `openclaw/workspace/` bersifat pribadi (persona, kontak, skills) dan **tidak dijelaskan di dokumentasi ini**. Yang relevan untuk integrasi: gateway menerima HTTP request dan membalas dengan respon yang ditafsirkan persona.
 
 ### Environment
-- `PI_AI_ANTIGRAVITY_VERSION=1.25.0`
-- `OPENCLAW_GATEWAY_BIND=lan` — bind ke LAN, bukan localhost saja.
-
-> Folder `openclaw/workspace/` berisi konfigurasi agent internal (BOOTSTRAP, IDENTITY, TOOLS, dll.) yang terkait alur kerja Enpii Studio. Bukan dependency langsung produk EnCenter, tapi disatukan agar developer punya satu stack lengkap.
+- `PI_AI_ANTIGRAVITY_VERSION` — pin versi runtime agen.
+- `OPENCLAW_GATEWAY_BIND=lan` — bind ke LAN agar bisa dijangkau dari container lain di `agent-network` dan dari host LAN, tidak hanya loopback.
 
 ## PostgreSQL (`evolution-postgres`) & Redis (`evolution-redis`)
 

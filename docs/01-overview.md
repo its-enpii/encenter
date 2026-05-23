@@ -2,12 +2,13 @@
 
 ## Apa itu EnCenter / EnVault
 
-**EnCenter** (sering juga disebut **EnVault**) adalah aplikasi self-hosted yang menggabungkan empat fungsi utama dalam satu paket:
+**EnCenter** (sering juga disebut **EnVault**) adalah aplikasi self-hosted yang menggabungkan lima fungsi utama dalam satu paket:
 
 1. **Credential Vault** — penyimpanan terenkripsi untuk kredensial SSH server dan koneksi database.
 2. **Server Control Center** — dashboard web untuk memantau dan mengelola server fleet.
 3. **Backup Engine** — eksekusi `mysqldump` jarak jauh via SSH, kompresi `gzip`, dan upload otomatis ke Google Drive (dengan struktur folder per tanggal).
 4. **Notification Hub** — webhook bertanda HMAC-SHA256 yang memancarkan event ke n8n, lalu diteruskan ke WhatsApp.
+5. **AI Automation** — workflow n8n + persona AI [OpenClaw](#operator-openclaw-enpii-ai) yang bertindak sebagai operator stack: menerima pesan WhatsApp, memantau status, menjawab pertanyaan, dan men-trigger aksi (mis. backup) tanpa intervensi manusia.
 
 ## Tujuan dan Filosofi
 
@@ -48,13 +49,31 @@
 - phpMyAdmin di-Dockerize sendiri dengan custom `autologin.php` yang menerima POST kredensial dari frontend dan auto-login ke server target tanpa menampilkan kredensial di URL.
 
 ### Layanan Pendukung
-- **n8n** — automation engine untuk scheduler dan WhatsApp dispatch.
+- **n8n** — automation engine untuk scheduler dan dispatch event.
 - **Evolution API** — bridge ke WhatsApp Web (Postgres + Redis).
-- **OpenClaw** — gateway agent (port 18789).
+- **phpMyAdmin** — UI database remote dengan auto-login dari Vault.
+
+### Operator: OpenClaw (Enpii AI)
+
+Di lapis paling atas stack ada **OpenClaw** — persona AI yang menjalankan peran "Enpii dalam versi digital". Dia bukan komponen yang dipanggil EnCenter, melainkan **operator** yang menggunakan stack ini layaknya manusia: menerima pesan WhatsApp lewat Evolution → n8n, memproses, lalu beraksi (mis. trigger backup, jawab status, kirim notifikasi).
+
+Karakteristik:
+- **Akses tidak langsung.** OpenClaw tidak pernah memanggil REST API EnCenter. Akses ke backend memang dibatasi: hanya frontend (Sanctum token) dan n8n (X-API-Key) yang boleh menyentuh API.
+- **Satu jalur komunikasi.** OpenClaw bicara dengan dunia luar lewat n8n saja. Pesan masuk: WhatsApp → Evolution → n8n → HTTP request ke OpenClaw. Pesan keluar: OpenClaw → n8n → tujuan (mis. balas ke Evolution → WhatsApp, atau panggil API EnCenter atas nama dirinya).
+- **Opsional secara teknis.** Aplikasi tetap berfungsi penuh tanpa container OpenClaw. Tapi dengan dia, stack terasa hidup — ada sosok yang merespons, memantau, dan menjalankan tugas-tugas yang tidak terjadwal.
+
+Konfigurasi internal OpenClaw (workspace, persona, skills) bersifat pribadi dan tidak didokumentasikan di repo ini. Yang relevan untuk integrasi EnCenter: dia hadir di port `18789` dan menerima HTTP request dari workflow n8n.
 
 ## Arsitektur Tingkat Tinggi
 
 ```
+                                 ┌──────────────────┐
+                                 │     OpenClaw     │
+                                 │   (Enpii AI,     │
+                                 │   port 18789)    │
+                                 └─────▲──────┬─────┘
+                                       │ HTTP │ HTTP
+                                       │      ▼
                 ┌──────────────────────────────┐
                 │     Browser / WhatsApp       │
                 └──────┬───────────────────┬───┘
@@ -95,6 +114,8 @@
    │  (mysqldump target) │
    └─────────────────────┘
 ```
+
+OpenClaw duduk di **luar** alur kerja teknis. Satu-satunya jalur komunikasinya adalah HTTP request dari workflow n8n. Kotaknya digambar di atas diagram untuk menegaskan posisi sebagai operator yang mengamati dari atas, bukan dependency yang dipanggil aplikasi.
 
 ## Alur Backup End-to-End
 

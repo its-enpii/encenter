@@ -16,7 +16,7 @@ EnCenter is a self-hosted **Server Control Center** and encrypted **Credential V
 | DB browser | phpMyAdmin (custom build with auto-login) |
 | Automation | n8n |
 | WhatsApp bridge | Evolution API (Postgres + Redis) |
-| Agent gateway | OpenClaw |
+| Operator (AI) | OpenClaw — Enpii AI persona |
 
 Detail per komponen: [`docs/03-architecture.md`](docs/03-architecture.md).
 
@@ -60,7 +60,7 @@ Langkah lengkap (termasuk Google OAuth, debugging, named volume): [`docs/02-gett
 | 8080 | Evolution API (WhatsApp bridge) |
 | 8081 | phpMyAdmin (auto-login dari Vault) |
 | 5678 | n8n |
-| 18789 | OpenClaw Gateway |
+| 18789 | OpenClaw — Enpii AI operator |
 
 PostgreSQL 15 berjalan internal di network `agent-network`, tidak diekspose ke host secara default.
 
@@ -98,7 +98,7 @@ Semua di [`docs/`](docs/README.md), berurutan:
 4. [`04-backend.md`](docs/04-backend.md) — Laravel: routes, controllers, services, jobs
 5. [`05-frontend.md`](docs/05-frontend.md) — Next.js: pages, components, helpers
 6. [`06-database-schema.md`](docs/06-database-schema.md) — tabel & relasi
-7. [`07-services.md`](docs/07-services.md) — phpMyAdmin, n8n, Evolution API, OpenClaw
+7. [`07-services.md`](docs/07-services.md) — phpMyAdmin, n8n, Evolution API, plus operator AI OpenClaw
 8. [`08-deployment.md`](docs/08-deployment.md) — panduan deploy & operasional
 9. [`09-security.md`](docs/09-security.md) — threat model, hardening
 10. [`10-troubleshooting.md`](docs/10-troubleshooting.md) — masalah umum & FAQ
