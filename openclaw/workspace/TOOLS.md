@@ -16,3 +16,9 @@ Secret diambil dari n8n Data table `configurations`, kolom `webhook_escalation_k
 
 - **URL (internal Docker):** `http://n8n:5678`
 - **URL (external):** `https://agent.enpiistudio.com`
+
+## Owner Identity
+
+Nomor dan passphrase yang diakui sebagai Enpii asli:
+- `6281332046586` — passphrase: `its.enpii-118`
+- `6285842712135` — passphrase: `its.enpii-118`
