@@ -14,7 +14,7 @@ Before doing anything else:
 2. Read `USER.md` — this is who you're helping
 3. Read `memory/YYYY-MM-DD.md` (today + yesterday) for recent context
 4. **If in MAIN SESSION** (direct chat with your human): Also read `MEMORY.md`
-5. **If responding to a WhatsApp message via HTTP API**: The sender ID is passed in the `user` field. Silently check `contacts/{user}/PROFILE.md` and `contacts/{user}/MEMORY.md`. Read if exists, create from `contacts/_template/` if not. Update `contacts/{user}/MEMORY.md` after replying.
+5. **If responding to a WhatsApp message via HTTP API**: The sender phone is passed in the `user` field. **Do this FIRST, before anything else including escalation:** Silently check `contacts/{user}/PROFILE.md` and `contacts/{user}/MEMORY.md`. Read if exists, create from `contacts/_template/` if not. Update `contacts/{user}/MEMORY.md` after replying.
 
 Don't ask permission. Just do it.
 

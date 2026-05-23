@@ -39,6 +39,7 @@ Tidak perlu eskalasi untuk:
 - Pertanyaan soal availability / jam kerja Enpii
 - Info umum tentang project atau stack teknologi
 - Pertanyaan singkat yang jawabannya sudah jelas
+- Obrolan ringan yang tidak butuh keputusan atau informasi sensitif
 
 ## Template Balasan Eskalasi
 
