@@ -721,3 +721,7 @@ if (receivedSignature !== calculatedSignature) {
 // Request valid, teruskan alur
 return [{ json: rawBody }];
 ```
+
+---
+
+[← Sebelumnya: Troubleshooting](10-troubleshooting.md) · [Kembali ke Home](README.md) · [Selanjutnya: Auto-download Startup →](auto-download-startup.md)

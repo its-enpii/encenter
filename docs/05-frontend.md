@@ -236,3 +236,7 @@ Variabel `NEXT_PUBLIC_PMA_URL` dipakai untuk integrasi phpMyAdmin (default `http
 - Fetch API langsung lewat `apiFetch` (tanpa React Query / SWR). Refresh manual via `refreshKey`.
 - State auth disimpan di `localStorage` (tidak ada Context/Provider). Kalau menambahkan SSR auth, perlu refactor.
 - Error handling sebagian lewat `alert()` browser bawaan (lihat halaman delete server group). Ke depannya bisa diseragamkan ke `AlertDialog`.
+
+---
+
+[← Sebelumnya: Backend](04-backend.md) · [Kembali ke Home](README.md) · [Selanjutnya: Database Schema →](06-database-schema.md)

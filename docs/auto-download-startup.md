@@ -49,3 +49,7 @@ Setelah task dibuat:
 Setelah restart komputer, script akan otomatis berjalan setelah delay 30 detik. Cek log atau output script untuk memastikan eksekusi berhasil.
 
 Untuk menjalankan task secara manual tanpa restart, klik kanan task di Task Scheduler → **Run**.
+
+---
+
+[← Sebelumnya: API Documentation](api-documentation.md) · [Kembali ke Home](README.md)

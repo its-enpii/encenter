@@ -115,3 +115,7 @@
 Berdasarkan halaman Settings dashboard:
 - **Version:** v1.0.0-beta
 - **Roadmap status:** Phase 1–5 sudah selesai sesuai `developer-guide.md`.
+
+---
+
+[Kembali ke Home](README.md) · [Selanjutnya: Getting Started →](02-getting-started.md)

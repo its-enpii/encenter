@@ -242,3 +242,7 @@ Setelah ini, setiap `git commit` akan menjalankan linter pada file yang di-stage
 - Konfigurasikan webhook ke n8n: lihat [03-architecture.md](03-architecture.md) dan [api-documentation.md](api-documentation.md).
 - Pelajari struktur kode: [04-backend.md](04-backend.md) dan [05-frontend.md](05-frontend.md).
 - Backup `APP_KEY` Anda ke tempat aman: lihat [09-security.md](09-security.md).
+
+---
+
+[← Sebelumnya: Overview](01-overview.md) · [Kembali ke Home](README.md) · [Selanjutnya: Architecture →](03-architecture.md)

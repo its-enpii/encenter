@@ -266,3 +266,7 @@ Untuk production yang lebih serius:
 - [ ] Backup terjadwal untuk Postgres + n8n + Evolution
 - [ ] Monitoring log (minimal cron `docker logs` ke storage)
 - [ ] Schedule rotasi APP_KEY (opsional, butuh re-encrypt seluruh data)
+
+---
+
+[← Sebelumnya: Services](07-services.md) · [Kembali ke Home](README.md) · [Selanjutnya: Security →](09-security.md)

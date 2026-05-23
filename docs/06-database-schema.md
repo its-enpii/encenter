@@ -239,3 +239,7 @@ Stack juga menjalankan **Postgres terpisah** (`postgres:15`) untuk Evolution API
 - Atau menambah service Postgres lain khusus EnCenter (preferensi production).
 
 phpMyAdmin (`8081`) hanya untuk membantu administrasi MySQL/MariaDB di **server target Anda** — bukan untuk mengelola Postgres internal stack ini.
+
+---
+
+[← Sebelumnya: Frontend](05-frontend.md) · [Kembali ke Home](README.md) · [Selanjutnya: Services →](07-services.md)

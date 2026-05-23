@@ -187,3 +187,7 @@ Patch critical (Laravel security release, Next.js, phpMyAdmin) sebaiknya dipasan
 4. Cek `activity_logs` untuk anomali (jam tidak biasa, IP asing, banyak `VIEW_CREDENTIALS`).
 5. Generate ulang webhook `secret_key` dan update di n8n receiver.
 6. Bila APP_KEY bocor, lakukan rotasi APP_KEY (lihat di atas) — semua kredensial harus di-input ulang.
+
+---
+
+[← Sebelumnya: Deployment](08-deployment.md) · [Kembali ke Home](README.md) · [Selanjutnya: Troubleshooting →](10-troubleshooting.md)

@@ -219,3 +219,7 @@ Service yang ada di kedua network bisa diakses dari container lain di stack lewa
 | Evolution | `GET http://localhost:8080/instance/fetchInstances` (perlu API key) |
 
 > Saat ini `docker-compose.yml` belum menambahkan `healthcheck` untuk masing-masing service. Anda bisa menambahkannya sesuai kebutuhan production.
+
+---
+
+[← Sebelumnya: Database Schema](06-database-schema.md) · [Kembali ke Home](README.md) · [Selanjutnya: Deployment →](08-deployment.md)

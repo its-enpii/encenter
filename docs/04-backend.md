@@ -278,3 +278,7 @@ docker exec -it envault-backend ./vendor/bin/pest
 ## Folder yang Sudah Tidak Ada
 
 - `app/Traits/` — folder dihapus. Trait kustom `HasUuid` dulu disediakan sebagai fallback, tapi semua model produksi memakai `HasUuids` bawaan Laravel.
+
+---
+
+[← Sebelumnya: Architecture](03-architecture.md) · [Kembali ke Home](README.md) · [Selanjutnya: Frontend →](05-frontend.md)

@@ -192,3 +192,7 @@ Dua arah:
 | `./phpmyadmin` | `/var/www/html` | Source phpMyAdmin (custom) |
 
 `.gitignore` mengabaikan `n8n/data/`, `evolution/instances/`, `evolution/postgres/`, `openclaw/config/` — pastikan backup terpisah jika data ini penting.
+
+---
+
+[← Sebelumnya: Getting Started](02-getting-started.md) · [Kembali ke Home](README.md) · [Selanjutnya: Backend →](04-backend.md)
