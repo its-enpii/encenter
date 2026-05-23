@@ -76,7 +76,8 @@ website/frontend/
 │       ├── Form.tsx                # Input, Textarea, Switcher, Checkbox, Radio, FileInput, SmartSelect
 │       └── SmartTable.tsx          # Tabel server-side dengan search & pagination
 ├── lib/
-│   └── api.ts                      # apiFetch helper, API_URL, PMA_URL
+│   ├── api.ts                      # apiFetch helper, API_URL, PMA_URL, AUTH_* constants
+│   └── auth-context.tsx            # AuthProvider + useAuth (login/logout, user state, tab sync)
 ├── types/
 │   └── admin.ts                    # Typing ServerGroup, Server, DatabaseConnection, ActivityLog, WebhookSetting
 ├── public/                         # static assets (logo, favicon, dll)
@@ -94,7 +95,7 @@ Struktur App Router mengikuti pola folder = path. Berikut peta halaman utama:
 
 | Path | File | Deskripsi |
 | --- | --- | --- |
-| `/` | `app/page.tsx` | Splash. Cek `localStorage.auth_token` lalu redirect ke `/admin` atau `/login`. |
+| `/` | `app/page.tsx` | Splash. Cek state `useAuth()` lalu redirect ke `/admin` atau `/login`. |
 | `/login` | `app/login/page.tsx` | Form login dengan styling custom (carbon-fibre background, neon accents). |
 | `/admin` | `app/admin/page.tsx` | Dashboard utama (StatsCard, ServerFleet, AuditLog). |
 | `/admin/groups` | `app/admin/groups/page.tsx` | CRUD Server Groups. |
@@ -115,15 +116,25 @@ Struktur App Router mengikuti pola folder = path. Berikut peta halaman utama:
 
 ## Auth Gate
 
-`app/admin/layout.tsx` melakukan client-side guard:
+Auth dikelola lewat `lib/auth-context.tsx` — sebuah React Context yang dipasang di root layout (`app/layout.tsx`). API publiknya:
 
-1. Cek `localStorage.auth_token`.
-2. Jika tidak ada → `router.replace('/login')`.
-3. Jika ada → render layout (Sidebar + Header + main).
+```ts
+const { loading, isAuthenticated, user, login, logout, refreshUser } = useAuth();
+```
 
-`apiFetch` di `lib/api.ts` juga otomatis redirect ke `/login` ketika menerima status 401 dari API, sambil menghapus token dari `localStorage`.
+Pola pemakaiannya:
 
-> Pendekatan ini mengandalkan `localStorage` (bukan HttpOnly cookie). Untuk hardening production lihat [09-security.md](09-security.md).
+1. `AuthProvider` membaca `auth_token` dari `localStorage` saat mount, lalu meminta `/auth/me` untuk dapat user object.
+2. `app/admin/layout.tsx` cek `isAuthenticated` → jika false (dan `loading=false`), redirect ke `/login`.
+3. Halaman login memanggil `login(token, user)` setelah sukses → context simpan token + user, lalu push ke `/admin`.
+4. Sidebar/Settings/Profile memanggil `useAuth()` untuk dapat user reaktif tanpa fetch ulang.
+5. Tombol "Sign out" di sidebar memanggil `logout()` → revoke token di backend (best-effort), clear context, redirect ke `/login`.
+
+Tab sinkronisasi: provider mendengarkan event `storage` browser. Kalau user logout di tab A, tab B otomatis dapat event dengan `newValue=null` lalu redirect ke `/login`. Kalau login di tab A, tab B otomatis fetch `/auth/me` dengan token yang baru.
+
+Centralized 401 handler: `apiFetch` di `lib/api.ts` mendispatch event `AUTH_UNAUTHORIZED_EVENT` ketika dapat 401. Provider mendengarkan event ini dan memicu logout flow yang sama. Tidak ada `window.location.href` reload.
+
+> Pendekatan ini tetap memakai `localStorage` (bukan HttpOnly cookie). Untuk hardening production lihat [09-security.md](09-security.md). Konstanta key `AUTH_TOKEN_STORAGE_KEY` diekspor dari `lib/api.ts` agar context dan helper fetch konsisten.
 
 ## Library API Helper
 
@@ -133,10 +144,14 @@ Struktur App Router mengikuti pola folder = path. Berikut peta halaman utama:
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 export const PMA_URL = process.env.NEXT_PUBLIC_PMA_URL || 'http://localhost:8081';
 
+export const AUTH_TOKEN_STORAGE_KEY = 'auth_token';
+export const AUTH_UNAUTHORIZED_EVENT = 'auth:unauthorized';
+
 export async function apiFetch(endpoint: string, options: any = {}) {
-  // Inject Bearer token dari localStorage.auth_token
+  // Inject Bearer token dari localStorage[AUTH_TOKEN_STORAGE_KEY]
   // Set Content-Type & Accept JSON
-  // Auto-redirect ke /login pada status 401
+  // Pada status 401: hapus token + dispatch AUTH_UNAUTHORIZED_EVENT.
+  // AuthProvider menangkap event tsb dan redirect via next/navigation router.
 }
 ```
 
@@ -233,9 +248,8 @@ Variabel `NEXT_PUBLIC_PMA_URL` dipakai untuk integrasi phpMyAdmin (default `http
 
 ## Pattern yang Tidak Standar (Heads-up)
 
-- Fetch API langsung lewat `apiFetch` (tanpa React Query / SWR). Refresh manual via `refreshKey`.
-- State auth disimpan di `localStorage` (tidak ada Context/Provider). Kalau menambahkan SSR auth, perlu refactor.
-- Error handling sebagian lewat `alert()` browser bawaan (lihat halaman delete server group). Ke depannya bisa diseragamkan ke `AlertDialog`.
+- Fetch API langsung lewat `apiFetch` (tanpa React Query / SWR). Refresh manual via `refreshKey`. Cocok untuk skala kecil project ini; kalau halaman list mulai banyak yang share data, pertimbangkan TanStack Query atau custom hook seperti `useServers()`.
+- Auth state via `AuthProvider` Context + `localStorage` (lihat bagian Auth Gate). Dialog dan alert konsisten lewat `Modal` / `AlertDialog` / `ConfirmDialog` — tidak ada lagi `alert()` / `confirm()` browser native di `app/` maupun `components/`.
 
 ---
 

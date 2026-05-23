@@ -39,10 +39,20 @@ export default function VaultPage() {
         setRefreshKey(prev => prev + 1);
         setDeleteDialog({ open: false, connectionId: null });
       } else {
-        alert("Failed to delete database connection.");
+        setTestResult({
+          open: true,
+          title: "Delete Failed",
+          message: "Failed to delete database connection.",
+          variant: "danger",
+        });
       }
     } catch (err) {
-      alert("Network error during deletion.");
+      setTestResult({
+        open: true,
+        title: "Network Error",
+        message: "Failed to communicate with the vault during deletion.",
+        variant: "danger",
+      });
     } finally {
       setIsDeleting(false);
     }

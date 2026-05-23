@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
-import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 
 export default function AdminLayout({
   children,
@@ -12,28 +12,16 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
+  const { loading, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
+    if (!loading && !isAuthenticated) {
       router.replace("/login");
-    } else {
-      setIsAuthenticated(true);
     }
-  }, [router]);
+  }, [loading, isAuthenticated, router]);
 
-  useEffect(() => {
-    const handleUnauthorized = () => {
-      setIsAuthenticated(false);
-      router.replace("/login");
-    };
-    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
-    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
-  }, [router]);
-
-  if (!isAuthenticated) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">
         <div className="flex flex-col items-center gap-4 animate-pulse">

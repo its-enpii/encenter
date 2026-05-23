@@ -150,10 +150,10 @@ Saat error di tengah jalan, status di-set `failed`, error_message disimpan, dan 
 
 - Frontend membaca `NEXT_PUBLIC_API_URL` (default `http://localhost:8000/api/v1`).
 - Helper `apiFetch` di `website/frontend/lib/api.ts` membungkus `fetch` dengan:
-  - Bearer token dari `localStorage.auth_token`.
+  - Bearer token dari `localStorage` (key `AUTH_TOKEN_STORAGE_KEY`).
   - Header `Content-Type: application/json` + `Accept: application/json`.
-  - Auto-redirect ke `/login` jika status 401.
-- Token disimpan di `localStorage` setelah login berhasil. Logout meng-hit `/auth/logout` dan menghapus token.
+  - Saat status 401: hapus token, dispatch event `AUTH_UNAUTHORIZED_EVENT`. `AuthProvider` listener event ini lalu redirect ke `/login` lewat `next/navigation` (no full reload).
+- Auth state dikelola `AuthProvider` di `lib/auth-context.tsx` (Context). Login simpan token + user, logout meng-hit `/auth/logout` dan clear context. Tab sync via event `storage` browser.
 
 ## Komunikasi Frontend ↔ phpMyAdmin
 

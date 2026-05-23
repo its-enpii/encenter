@@ -32,7 +32,7 @@ export default function WebhooksPage() {
 
   const handleDelete = async () => {
     if (!deleteDialog.id) return;
-    
+
     setIsDeleting(true);
     try {
       const response = await apiFetch(`/webhooks/${deleteDialog.id}`, {
@@ -43,10 +43,20 @@ export default function WebhooksPage() {
         setRefreshKey(prev => prev + 1);
         setDeleteDialog({ open: false, id: null });
       } else {
-        alert("Failed to delete webhook.");
+        setTestResult({
+          open: true,
+          title: "Delete Failed",
+          message: "Failed to delete webhook.",
+          variant: "danger",
+        });
       }
     } catch (err) {
-      alert("Network error during deletion.");
+      setTestResult({
+        open: true,
+        title: "Network Error",
+        message: "Failed to communicate with the webhook gateway during deletion.",
+        variant: "danger",
+      });
     } finally {
       setIsDeleting(false);
     }

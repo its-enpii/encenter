@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/admin/ui/Core";
-import { AlertDialog } from "@/components/admin/ui/Dialog";
+import { AlertDialog, ConfirmDialog } from "@/components/admin/ui/Dialog";
 import { CloudIcon, CheckCircleIcon, XCircleIcon } from "@/components/admin/Icons";
 
 interface StorageConfig {
@@ -20,6 +20,8 @@ export default function StoragePage() {
   const [isEditingFolder, setIsEditingFolder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
+  const [disconnectDialog, setDisconnectDialog] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [errorDialog, setErrorDialog] = useState({ open: false, title: "", message: "" });
 
   useEffect(() => {
@@ -84,15 +86,27 @@ export default function StoragePage() {
   };
 
   const handleDisconnect = async () => {
-    if (!confirm("Are you sure you want to disconnect Google Drive?")) return;
-
+    setIsDisconnecting(true);
     try {
       const response = await apiFetch("/storage", { method: "DELETE" });
       if (response.ok) {
         setConfig(null);
+        setDisconnectDialog(false);
+      } else {
+        setErrorDialog({
+          open: true,
+          title: "Disconnect Failed",
+          message: "The vault gateway refused to disconnect Google Drive. Please retry.",
+        });
       }
     } catch (err) {
-      alert("Failed to disconnect");
+      setErrorDialog({
+        open: true,
+        title: "Network Error",
+        message: "Failed to communicate with the storage gateway.",
+      });
+    } finally {
+      setIsDisconnecting(false);
     }
   };
 
@@ -114,6 +128,17 @@ export default function StoragePage() {
         onClose={() => setErrorDialog({ ...errorDialog, open: false })}
         title={errorDialog.title}
         description={errorDialog.message}
+        variant="danger"
+      />
+
+      <ConfirmDialog
+        isOpen={disconnectDialog}
+        onClose={() => !isDisconnecting && setDisconnectDialog(false)}
+        onConfirm={handleDisconnect}
+        title="Disconnect Google Drive?"
+        description="EnCenter will no longer upload backups to this account. The folder on Drive will not be deleted, only the link is removed."
+        confirmText="Disconnect"
+        isLoading={isDisconnecting}
         variant="danger"
       />
 
@@ -149,7 +174,7 @@ export default function StoragePage() {
                       <p className="text-xs text-slate-400">{config.email || 'Authorized Account'}</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-300" onClick={handleDisconnect}>
+                  <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-300" onClick={() => setDisconnectDialog(true)}>
                     DISCONNECT
                   </Button>
                 </div>

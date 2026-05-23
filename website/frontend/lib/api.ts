@@ -2,6 +2,13 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000
 export const PMA_URL = process.env.NEXT_PUBLIC_PMA_URL || 'http://localhost:8081';
 
 /**
+ * Single source of truth for the localStorage key that holds the Sanctum token.
+ * Both apiFetch (read on every request) and AuthProvider (read/write/clear)
+ * must use this constant.
+ */
+export const AUTH_TOKEN_STORAGE_KEY = 'auth_token';
+
+/**
  * Custom event broadcast when the API replies with 401.
  * Layouts and route guards subscribe to this and decide how to redirect
  * (using next/navigation router) without doing a full page reload.
@@ -12,7 +19,7 @@ export async function apiFetch(endpoint: string, options: any = {}) {
     const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
     // Get token from localStorage if exists
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_STORAGE_KEY) : null;
 
     const headers = {
         'Content-Type': 'application/json',
@@ -28,7 +35,7 @@ export async function apiFetch(endpoint: string, options: any = {}) {
         });
 
         if (response.status === 401 && typeof window !== 'undefined') {
-            localStorage.removeItem('auth_token');
+            localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
             window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
         }
 

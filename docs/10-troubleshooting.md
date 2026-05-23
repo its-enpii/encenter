@@ -82,7 +82,7 @@ Edit `docker-compose.yml` bagian `ports`, lalu `docker compose up -d`.
 
 ### Login mengembalikan "Unauthenticated."
 
-- Cek apakah token Bearer dikirim. Helper `apiFetch` membaca `localStorage.auth_token`. Coba `console.log(localStorage.getItem('auth_token'))`.
+- Cek apakah token Bearer dikirim. Helper `apiFetch` membaca `localStorage[AUTH_TOKEN_STORAGE_KEY]` (key default `auth_token`). Coba `console.log(localStorage.getItem('auth_token'))` di devtools, atau dari komponen pakai `useAuth()` lalu inspect `isAuthenticated` / `user`.
 - Cek `SANCTUM_STATEFUL_DOMAINS` di backend `.env` jika pakai cookie session.
 - Pastikan APP_KEY backend tidak berubah (token decryption bisa terganggu).
 
@@ -245,9 +245,9 @@ Tabel bisa jadi sangat besar. Solusi:
 
 ### Halaman `/admin/...` reload terus / kembali ke `/login`
 
-- `localStorage.auth_token` tidak ada atau invalid.
-- API mungkin balas 401 → otomatis redirect.
-- Login ulang.
+- Token di `localStorage` tidak ada atau invalid → `AuthProvider` redirect ke `/login`.
+- API balas 401 → `apiFetch` dispatch `AUTH_UNAUTHORIZED_EVENT` → context tangkap → redirect ke `/login`.
+- Login ulang. Kalau masih berulang, cek tab lain juga: tab sync via event `storage` membuat logout di tab manapun langsung mengusir tab aktif.
 
 ### Cmd+K palette kosong
 

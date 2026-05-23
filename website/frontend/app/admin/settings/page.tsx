@@ -1,24 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { SettingsIcon, ActivityIcon } from "@/components/admin/Icons";
-import { apiFetch } from "@/lib/api";
-
-interface UserInfo {
-  email?: string;
-  name?: string;
-  last_login?: string | null;
-}
+import { useAuth } from "@/lib/auth-context";
 
 export default function SettingsPage() {
-  const [user, setUser] = useState<UserInfo | null>(null);
-
-  useEffect(() => {
-    apiFetch("/auth/me")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setUser(data))
-      .catch(() => setUser(null));
-  }, []);
+  const { user } = useAuth();
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">

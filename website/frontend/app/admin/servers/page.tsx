@@ -39,10 +39,20 @@ export default function ServersPage() {
         setRefreshKey(prev => prev + 1);
         setDeleteDialog({ open: false, serverId: null });
       } else {
-        alert("Failed to delete server node.");
+        setTestResult({
+          open: true,
+          title: "Delete Failed",
+          message: "Failed to delete server node.",
+          variant: "danger",
+        });
       }
     } catch (err) {
-      alert("Network error during deletion.");
+      setTestResult({
+        open: true,
+        title: "Network Error",
+        message: "Failed to communicate with the secure gateway during deletion.",
+        variant: "danger",
+      });
     } finally {
       setIsDeleting(false);
     }

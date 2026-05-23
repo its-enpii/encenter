@@ -34,7 +34,6 @@ Composer scripts yang penting:
 - Health endpoint: `/up`.
 - Middleware API stack: `ActivityLogger` (custom) + `throttle:api`.
 - Alias middleware:
-  - `verified` → `EnsureEmailIsVerified`.
   - `auth.api` → `ApiKeyOrSanctum`.
 - `AuthenticationException` di-render JSON 401 untuk request ke `api/*` atau yang `expectsJson()`.
 
@@ -62,14 +61,10 @@ app/
 │   │   │   ├── ServerGroupController.php
 │   │   │   ├── StorageController.php
 │   │   │   └── WebhookSettingController.php
-│   │   ├── Auth/                   # Breeze scaffolding (web auth)
-│   │   ├── Controller.php          # Base controller (kosong)
-│   │   └── ...
-│   ├── Middleware/
-│   │   ├── ActivityLogger.php
-│   │   ├── ApiKeyOrSanctum.php
-│   │   └── EnsureEmailIsVerified.php
-│   └── Requests/Auth/LoginRequest.php
+│   │   └── Controller.php          # Base controller (kosong)
+│   └── Middleware/
+│       ├── ActivityLogger.php
+│       └── ApiKeyOrSanctum.php
 ├── Jobs/
 │   └── RunBackupJob.php
 ├── Models/
@@ -144,10 +139,6 @@ Dipasang di stack API tapi **hanya mencatat event login & logout** (route bernam
 - Cek tabel `activity_logs` ada (`Schema::hasTable`) — supaya tidak error sebelum migrasi.
 - Resource `AUTH`. Meta: HTTP method, user agent, status code.
 - Failure logging tidak crash request — fallback ke `logger()->error`.
-
-### `EnsureEmailIsVerified`
-
-Standar Breeze. Tidak aktif dipakai di route API.
 
 ## Controllers (Highlight)
 
@@ -271,13 +262,17 @@ docker exec -it envault-backend ./vendor/bin/pest
 
 ## Aset Penting Lain
 
-- `routes/auth.php` — endpoint Breeze untuk login/register web (`/login`, `/register`, dst.) — tidak dipakai oleh frontend Next.js, tapi tetap aktif.
+- `routes/web.php` — hanya berisi satu route diagnostik (`GET /` mengembalikan versi Laravel). Frontend tidak memakai endpoint web Laravel.
 - `database/factories/UserFactory.php` — factory standar.
 - `database/seeders/DatabaseSeeder.php` — bikin user `admin@encenter.com / password`.
 
-## Folder yang Sudah Tidak Ada
+## Cleanup History
 
-- `app/Traits/` — folder dihapus. Trait kustom `HasUuid` dulu disediakan sebagai fallback, tapi semua model produksi memakai `HasUuids` bawaan Laravel.
+Beberapa folder/file pernah ada lalu dihapus selama refactor. Konteks ini berguna ketika membaca commit history lama:
+
+- `app/Http/Controllers/Auth/`, `app/Http/Requests/Auth/`, `app/Http/Middleware/EnsureEmailIsVerified.php`, `routes/auth.php` — Breeze (web auth) tidak dipakai oleh frontend Next.js. Dihapus seluruhnya, termasuk dependency `laravel/breeze` di `composer.json` dan akses `verified` middleware alias di bootstrap.
+- `app/Traits/HasUuid.php` — trait kustom fallback yang sudah digantikan `Illuminate\Database\Eloquent\Concerns\HasUuids` bawaan.
+- Tabel `gdrive_credentials` (di-drop oleh migrasi `2026_05_23_000001`) — digantikan `user_storages`.
 
 ---
 

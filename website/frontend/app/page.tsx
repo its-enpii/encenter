@@ -3,18 +3,16 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldIcon } from "@/components/admin/Icons";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Home() {
   const router = useRouter();
+  const { loading, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-    if (token) {
-      router.replace("/admin");
-    } else {
-      router.replace("/login");
-    }
-  }, [router]);
+    if (loading) return;
+    router.replace(isAuthenticated ? "/admin" : "/login");
+  }, [loading, isAuthenticated, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-200">

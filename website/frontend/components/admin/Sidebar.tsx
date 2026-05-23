@@ -3,19 +3,19 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboardIcon, 
-  ServerIcon, 
+import {
+  LayoutDashboardIcon,
+  ServerIcon,
   LayoutGridIcon,
-  DatabaseIcon, 
-  ActivityIcon, 
+  DatabaseIcon,
+  ActivityIcon,
   SettingsIcon,
-  ShieldCheckIcon,
   CloudIcon,
   ClockIcon,
   WebhookIcon,
-  UserIcon
+  UserIcon,
 } from "./Icons";
+import { useAuth } from "@/lib/auth-context";
 
 interface SidebarLinkProps {
   href: string;
@@ -42,6 +42,7 @@ const SidebarLink = ({ href, icon, label, active }: SidebarLinkProps) => (
 
 export const Sidebar = ({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (val: boolean) => void }) => {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <>
@@ -87,14 +88,27 @@ export const Sidebar = ({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (
         </nav>
 
         <div className="p-6">
-          <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50">
+          <div className="bg-slate-900/50 rounded-2xl p-4 border border-slate-800/50 space-y-3">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700" />
+              <div className="h-8 w-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
+                <UserIcon className="h-4 w-4" />
+              </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-bold text-white truncate">Administrator</p>
-                <p className="text-[10px] text-slate-500 truncate">Cyber Sentinel v1.0</p>
+                <p className="text-xs font-bold text-white truncate" title={user?.name ?? "Operator"}>
+                  {user?.name ?? "Operator"}
+                </p>
+                <p className="text-[10px] text-slate-500 truncate" title={user?.email ?? ""}>
+                  {user?.email ?? "—"}
+                </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="w-full text-[10px] font-bold uppercase tracking-widest text-slate-500 hover:text-rose-400 transition-colors py-1.5 rounded-lg border border-slate-800 hover:border-rose-500/30"
+            >
+              Sign out
+            </button>
           </div>
         </div>
       </aside>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/admin/ui/Core';
 import { Input } from '@/components/admin/ui/Form';
 import { ShieldIcon } from '@/components/admin/Icons';
@@ -13,13 +14,13 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const { isAuthenticated, login, loading: authLoading } = useAuth();
 
     useEffect(() => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
+        if (!authLoading && isAuthenticated) {
             router.replace('/admin');
         }
-    }, [router]);
+    }, [authLoading, isAuthenticated, router]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,8 +36,7 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (res.ok) {
-                localStorage.setItem('auth_token', data.token);
-                router.push('/admin'); // Redirect to admin after login
+                login(data.token, data.user);
             } else {
                 setError(data.message || 'Authentication failed. Please verify your credentials.');
             }

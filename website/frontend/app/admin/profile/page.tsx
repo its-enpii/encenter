@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/admin/ui/Core";
 import { Input } from "@/components/admin/ui/Form";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { UserIcon } from "@/components/admin/Icons";
 
 export default function ProfilePage() {
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -15,30 +17,18 @@ export default function ProfilePage() {
     password_confirmation: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
   const [message, setMessage] = useState({ text: "", type: "" });
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await apiFetch("/auth/me");
-        if (response.ok) {
-          const data = await response.json();
-          setFormData((prev) => ({
-            ...prev,
-            name: data.name || "",
-            email: data.email || "",
-            phone_number: data.phone_number || "",
-          }));
-        }
-      } catch (err) {
-        console.error("Failed to fetch profile", err);
-      } finally {
-        setIsFetching(false);
-      }
-    };
-    fetchProfile();
-  }, []);
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name ?? "",
+        email: user.email ?? "",
+        phone_number: user.phone_number ?? "",
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -67,7 +57,9 @@ export default function ProfilePage() {
 
       if (response.ok) {
         setMessage({ text: "Profile updated successfully.", type: "success" });
-        setFormData(prev => ({ ...prev, password: "", password_confirmation: "" }));
+        setFormData((prev) => ({ ...prev, password: "", password_confirmation: "" }));
+        // Sync the cached user across the app (sidebar, settings, header).
+        await refreshUser();
       } else {
         const data = await response.json();
         setMessage({ text: data.message || "Failed to update profile.", type: "error" });
@@ -78,7 +70,8 @@ export default function ProfilePage() {
       setIsLoading(false);
     }
   };
-  if (isFetching) {
+
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500/20 border-t-emerald-500"></div>

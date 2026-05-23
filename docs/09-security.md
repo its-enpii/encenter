@@ -60,13 +60,15 @@ Tidak ada built-in command untuk ini di project. Jika butuh, tulis script artisa
 
 ### Login & Session
 - Endpoint `/auth/login` dilindungi `throttle:login` (5 req/menit per IP).
-- Frontend menyimpan token di `localStorage`. Pertimbangan:
+- Frontend menyimpan token di `localStorage` lewat `AuthProvider` (`lib/auth-context.tsx`). Konstanta key (`AUTH_TOKEN_STORAGE_KEY`) diekspor dari `lib/api.ts` sebagai single source of truth — context dan helper fetch baca/tulis ke key yang sama.
+- Tab sync: provider mendengarkan event `storage`, jadi logout di satu tab langsung mengusir tab lain. Centralized 401 handler: `apiFetch` dispatch event `AUTH_UNAUTHORIZED_EVENT` saat dapat 401 → context tangkap → redirect via `next/navigation` (no full reload).
+- Pertimbangan keamanan:
   - Rentan XSS — pastikan tidak ada input user yang di-render `dangerouslySetInnerHTML`.
   - Untuk hardening: pakai HttpOnly cookie + CSRF token, atau pindahkan auth ke Sanctum SPA mode.
 
 ### Verifikasi Email
-- Migration default `users.email_verified_at` ada, dan middleware `EnsureEmailIsVerified` tersedia.
-- Saat ini route API tidak menggunakan middleware tersebut. Aktifkan kalau Anda mengharuskan email verified untuk akses.
+- Kolom `users.email_verified_at` masih ada di schema (kompatibilitas Laravel default), tapi middleware Breeze sudah dihapus saat cleanup auth web. Tidak ada flow verifikasi email yang aktif di route API V1.
+- Kalau Anda butuh enforcement email-verified, tambahkan middleware kustom (atau aktifkan `\Illuminate\Auth\Middleware\EnsureEmailIsVerified` bawaan Laravel) lalu daftarkan via alias di `bootstrap/app.php`.
 
 ## Network & Transport
 
