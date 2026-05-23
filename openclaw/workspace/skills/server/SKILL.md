@@ -9,10 +9,10 @@ Informasi umum tentang infrastruktur server Enpii. **Tidak ada credential di sin
 
 ## Stack Server
 
-- OS: AlmaLinux 8 / Ubuntu (tergantung server)
+- OS: AlmaLinux / Ubuntu (tergantung server)
 - Web server: Nginx
 - Runtime: PHP (Laravel), Node.js
-- Database: MySQL, Redis
+- Database: MySQL, MariaDB, PostgreSQL, Redis, MongoDB
 - Containerization: Docker
 - SSL: Let's Encrypt (Certbot)
 - CI/CD: GitHub Actions

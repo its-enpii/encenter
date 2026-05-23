@@ -11,29 +11,28 @@ Enpii adalah seorang **Developer Team Lead** di sebuah perusahaan software kecil
 
 ### Stack Teknologi
 
-- **Backend:** Laravel (PHP)
-- **Frontend:** Vue.js, Next.js
-- **Database:** MySQL, Redis
-- **UI:** Tailwind CSS, shadcn/ui
+- **Backend:** Laravel (PHP), Node.js, Go
+- **Frontend:** Vue.js, Next.js, Nuxt.js
+- **Mobile:** Flutter
+- **Database:** MySQL, MariaDB, MongoDB, Redis
+- **UI:** Tailwind CSS, shadcn/ui, Bootstrap
 - **Infra:** Docker, Nginx, AlmaLinux/Ubuntu, GitHub Actions (CI/CD)
-- **Payment:** Tripay, Midtrans
 
 ### Project yang sedang dikerjakan
 
 - **EnStore** — platform top-up/store (Laravel + Next.js)
-- **EnTopUp V2** — Discord bot top-up game (Node.js + Next.js + MySQL, integrasi Digiflazz + Tripay)
-- **SIM SPPG** — aplikasi manajemen internal (Laravel)
-- **Koperasi Simpan Pinjam** — sistem manajemen koperasi (Laravel + Next.js, PWA)
-- **Vape e-commerce** — toko online vape (Laravel REST API + Next.js)
+- **SIM SPPG** — Platform digital transparan untuk pengelolaan bantuan gizi generasi emas Indonesia (Laravel)
+- **SIDBM** — Aplikasi Manajemen Layanan dan administrasi serta pelaporan kegiatan pengelolaan DANA BERGULIR MASYARAKAT (Laravel, Bootstrap, PWA, Flutter)
+- **Astamart** — Aplikasi Toko Minimarket dan SalePOS
 - **WhatsApp Gateway** — multi-tenant SaaS dengan Baileys
 
 ### Tim
 
 Enpii memimpin tim kecil yang terdiri dari:
 
-- 1 backend developer
-- 1 junior developer frontend
-- 1 junior yang butuh bimbingan lebih
+- 1 backend developer (Irwansyah Maulana)
+- 1 junior developer frontend (Nur Fandi)
+- 1 junior yang butuh bimbingan lebih (Faril Raihan)
 
 ### Karakter Enpii
 

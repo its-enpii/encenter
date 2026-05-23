@@ -11,7 +11,7 @@ description: Pertanyaan yang sering masuk ke Enpii via WhatsApp beserta jawabann
 A: Saat ini Enpii sedang tidak available. Pesan Anda sudah saya terima. Kalau urgent, tinggalkan pesan dan Enpii akan balas secepatnya.
 
 **Q: Kapan bisa dihubungi?**
-A: Enpii biasanya aktif di jam kerja WIB (08.00–17.00, Senin–Jumat). Untuk urusan mendesak, tinggalkan pesan dan akan dibalas segera setelah Enpii available.
+A: Enpii biasanya aktif di jam kerja WIB (08.00–16.00, Senin–Jumat dan 08.00-12.00, Pada Hari Sabtu). Untuk urusan mendesak, tinggalkan pesan dan akan dibalas segera setelah Enpii available.
 
 **Q: Bisa minta tolong project/freelance?**
 A: Untuk inquiry project atau kerjasama, silakan tinggalkan detail kebutuhan Anda (jenis project, timeline, budget range) dan Enpii akan follow up.

@@ -9,8 +9,8 @@ description: Panduan kapan dan bagaimana eskalasi pesan ke Enpii langsung — ur
 
 Eskalasi langsung tanpa tunggu jika pesan mengandung:
 
-- "production down" / "server mati" / "tidak bisa akses"
-- "URGENT" / "DARURAT" / "mendesak"
+- "production down" / "server mati" / "tidak bisa akses" / server down
+- "URGENT" / "DARURAT" / "mendesak" / "penting" / "segera"
 - Error yang mempengaruhi banyak user
 - Data hilang atau corrupt
 - Security breach / akses tidak sah
@@ -48,7 +48,7 @@ Halo,
 Enpii sedang tidak available saat ini. Pesan Anda sudah saya catat dan akan diteruskan ke Enpii.
 
 [Jika urgent]: Karena ini urgent, saya langsung hubungi Enpii sekarang.
-[Jika normal]: Enpii biasanya bisa balas di jam kerja WIB (08.00-17.00).
+[Jika normal]: Enpii biasanya bisa balas di jam kerja WIB (08.00–16.00, Senin–Jumat dan 08.00-12.00, Pada Hari Sabtu).
 
 Ada lagi yang bisa saya bantu?
 ```

@@ -9,46 +9,37 @@ description: Daftar project aktif Enpii beserta stack teknologi dan status penge
 
 Platform top-up dan store digital.
 
-- **Stack:** Laravel (backend API) + Next.js (frontend) + MySQL + Redis
+- **Stack:** Laravel (backend API) + Next.js (frontend) + MySQL + Redis + Flutter (mobile)
 - **Payment:** Tripay
-- **Status:** Aktif dikembangkan
-
-## EnTopUp V2
-
-Discord bot untuk layanan top-up game.
-
-- **Stack:** Node.js + Next.js + MySQL, monorepo
-- **Integrasi:** Digiflazz (supplier), Tripay (payment)
-- **Platform:** Discord bot
-- **Status:** Aktif dikembangkan
+- **Status:** Production
 
 ## SIM SPPG
 
 Sistem Informasi Manajemen internal perusahaan.
 
-- **Stack:** Laravel + Vue.js SPA + MySQL
+- **Stack:** Laravel + Livewire + MySQL
 - **Status:** Production, maintenance aktif
 
-## Koperasi Simpan Pinjam
+## SIDBM
 
-Sistem manajemen koperasi dengan fitur offline.
+Manajemen Layanan dan administrasi.
 
-- **Stack:** Laravel + Next.js + MySQL + Redis
+- **Stack:** Laravel + MySQL
 - **Fitur khusus:** PWA dengan offline capability
-- **Status:** Dalam pengembangan
+- **Status:** Production
 
-## Vape E-Commerce
+## Astamart
 
-Toko online vape.
+Toko Minimarket dan SalePOS.
 
-- **Stack:** Laravel REST API + Next.js + MySQL + Redis + Tripay
+- **Stack:** Laravel + Livewire + MySQL
 - **Status:** Dalam pengembangan
 
 ## WhatsApp SaaS Gateway
 
 Platform multi-tenant untuk WhatsApp automation.
 
-- **Stack:** Laravel + Livewire + Baileys
+- **Stack:** Baileys
 - **Status:** Production
 
 ## Catatan

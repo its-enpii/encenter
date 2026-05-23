@@ -25,4 +25,4 @@ Jawab jujur:
 
 ## Jam Operasional
 
-Enpii biasanya aktif di jam kerja WIB (08.00–17.00, Senin–Jumat). Di luar jam itu, kemungkinan besar tidak bisa balas segera.
+Enpii biasanya aktif di jam kerja WIB (08.00–16.00, Senin–Jumat dan 08.00-12.00, Pada Hari Sabtu). Di luar jam itu, kemungkinan besar tidak bisa balas segera.
