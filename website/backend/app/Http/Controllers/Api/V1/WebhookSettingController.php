@@ -32,8 +32,10 @@ class WebhookSettingController extends Controller
             'events' => 'nullable|array',
         ]);
 
-        $validated['is_active'] = $request->boolean('is_active') 
-            ? \Illuminate\Support\Facades\DB::raw('true') 
+        // DB::raw('true'/'false') is intentional: Laravel casts PHP booleans to
+        // integers when binding, which Postgres rejects against a `boolean` column.
+        $validated['is_active'] = $request->boolean('is_active')
+            ? \Illuminate\Support\Facades\DB::raw('true')
             : \Illuminate\Support\Facades\DB::raw('false');
 
         $setting = $request->user()->webhookSettings()->create($validated);
@@ -67,8 +69,8 @@ class WebhookSettingController extends Controller
         ]);
 
         if (isset($validated['is_active'])) {
-            $validated['is_active'] = $request->boolean('is_active') 
-                ? \Illuminate\Support\Facades\DB::raw('true') 
+            $validated['is_active'] = $request->boolean('is_active')
+                ? \Illuminate\Support\Facades\DB::raw('true')
                 : \Illuminate\Support\Facades\DB::raw('false');
         }
 
@@ -95,43 +97,15 @@ class WebhookSettingController extends Controller
     {
         $setting = $request->user()->webhookSettings()->findOrFail($id);
 
-        // Temporarily override the events so we can guarantee it gets triggered if active.
-        // Wait, WebhookService loops through all active user settings that match the event.
-        // Instead of using WebhookService->send() for everything, for the test we should just trigger a manual send.
-        // Let's create the payload manually for the test.
-        $payload = [
-            'event' => 'test',
-            'timestamp' => now()->toIso8601ZuluString(),
-            'phone_number' => $request->user()->phone_number,
-            'data' => [
-                'message' => 'This is a test webhook payload from Server Control Center.',
-            ]
-        ];
+        $result = $webhookService->sendOne(
+            $setting,
+            'test',
+            ['message' => 'This is a test webhook payload from Server Control Center.'],
+            $request->user()
+        );
 
-        $jsonPayload = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $signature = hash_hmac('sha256', $jsonPayload, $setting->secret_key);
+        $statusCode = ($result['success'] ?? false) ? 200 : 500;
 
-        try {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
-                'X-Webhook-Signature' => 'hmac-sha256=' . $signature,
-                'X-Webhook-Event' => 'test',
-                'Content-Type' => 'application/json',
-            ])
-            ->timeout(10)
-            ->send('POST', $setting->webhook_url, [
-                'body' => $jsonPayload
-            ]);
-
-            return response()->json([
-                'success' => $response->successful(),
-                'status' => $response->status(),
-                'body' => $response->body(),
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return response()->json($result, $statusCode);
     }
 }

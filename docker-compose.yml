@@ -5,9 +5,9 @@ services:
     restart: unless-stopped
     volumes:
       - ./website/backend:/var/www/html
-    environment:
-      - APP_ENV=local
-      - APP_DEBUG=true
+      - backend-vendor:/var/www/html/vendor
+    depends_on:
+      - postgres
     networks:
       - agent-network
       - web-network
@@ -19,11 +19,10 @@ services:
     command: php artisan queue:work --verbose --tries=3 --timeout=600
     volumes:
       - ./website/backend:/var/www/html
-    environment:
-      - APP_ENV=local
-      - APP_DEBUG=true
+      - backend-vendor:/var/www/html/vendor
     depends_on:
       - envault-backend
+      - postgres
     networks:
       - agent-network
 
@@ -51,6 +50,10 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    volumes:
+      - ./website/frontend:/app
+      - frontend-node-modules:/app/node_modules
+      - frontend-next-cache:/app/.next
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
@@ -108,6 +111,7 @@ services:
       POSTGRES_DB: evolution
     volumes:
       - ./evolution/postgres:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
       - agent-network
       - web-network
@@ -150,6 +154,8 @@ services:
     restart: unless-stopped
     ports:
       - "8081:80"
+    environment:
+      - PMA_BLOWFISH_SECRET=${PMA_BLOWFISH_SECRET}
     volumes:
       - ./phpmyadmin:/var/www/html
     networks:
@@ -157,10 +163,14 @@ services:
       - web-network
 
 
+volumes:
+  backend-vendor:
+  frontend-node-modules:
+  frontend-next-cache:
+
 networks:
   agent-network:
     driver: bridge
     name: agent-network
   web-network:
     external: true
-

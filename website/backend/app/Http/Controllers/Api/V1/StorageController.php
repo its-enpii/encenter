@@ -86,7 +86,9 @@ class StorageController extends Controller
                     'refresh_token' => $tokens['refresh_token'] ?? ($existing ? $existing->refresh_token : null),
                     'expires_at' => now()->addSeconds($tokens['expires_in']),
                     'folder_name' => $folderName,
-                    'is_active' => \Illuminate\Support\Facades\DB::raw('true')
+                    // DB::raw('true') avoids Laravel binding the boolean as integer,
+                    // which Postgres rejects on a `boolean` column.
+                    'is_active' => \Illuminate\Support\Facades\DB::raw('true'),
                 ]
             );
 

@@ -18,6 +18,7 @@ jobs:
           script: |
             cd /home/enpii/studio/encenter
             git pull origin main
+            docker network inspect web-network >/dev/null 2>&1 || docker network create web-network
             docker compose up -d --build
             docker compose restart envault-nginx
             docker compose exec -T envault-backend php artisan config:clear

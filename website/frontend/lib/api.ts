@@ -1,9 +1,16 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 export const PMA_URL = process.env.NEXT_PUBLIC_PMA_URL || 'http://localhost:8081';
 
+/**
+ * Custom event broadcast when the API replies with 401.
+ * Layouts and route guards subscribe to this and decide how to redirect
+ * (using next/navigation router) without doing a full page reload.
+ */
+export const AUTH_UNAUTHORIZED_EVENT = 'auth:unauthorized';
+
 export async function apiFetch(endpoint: string, options: any = {}) {
     const url = `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-    
+
     // Get token from localStorage if exists
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
@@ -20,12 +27,9 @@ export async function apiFetch(endpoint: string, options: any = {}) {
             headers,
         });
 
-        if (response.status === 401) {
-            // Handle unauthorized (redirect to login or refresh token)
-            if (typeof window !== 'undefined') {
-                localStorage.removeItem('auth_token');
-                window.location.href = '/login';
-            }
+        if (response.status === 401 && typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token');
+            window.dispatchEvent(new CustomEvent(AUTH_UNAUTHORIZED_EVENT));
         }
 
         return response;

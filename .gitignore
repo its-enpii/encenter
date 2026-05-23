@@ -7,6 +7,9 @@ Thumbs.db
 *.log
 *.ps1
 
+# Root tooling (husky + lint-staged)
+node_modules/
+
 # Infrastructure
 openclaw/config/
 n8n/data/

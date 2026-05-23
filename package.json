@@ -1,0 +1,20 @@
+{
+  "name": "envault",
+  "private": true,
+  "description": "Repo-level tooling for the EnCenter / EnVault monorepo (husky + lint-staged).",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10"
+  },
+  "lint-staged": {
+    "website/frontend/**/*.{ts,tsx,js,jsx,mjs,cjs}": [
+      "pnpm --dir website/frontend exec eslint --fix --max-warnings 0"
+    ],
+    "website/backend/**/*.php": [
+      "scripts/lint-staged-pint.sh"
+    ]
+  }
+}

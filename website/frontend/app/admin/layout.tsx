@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
+import { AUTH_UNAUTHORIZED_EVENT } from "@/lib/api";
 
 export default function AdminLayout({
   children,
@@ -21,6 +22,15 @@ export default function AdminLayout({
     } else {
       setIsAuthenticated(true);
     }
+  }, [router]);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthenticated(false);
+      router.replace("/login");
+    };
+    window.addEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
+    return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, handleUnauthorized);
   }, [router]);
 
   if (!isAuthenticated) {

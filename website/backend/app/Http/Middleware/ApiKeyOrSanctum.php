@@ -23,7 +23,10 @@ class ApiKeyOrSanctum
         $configuredKey = env('N8N_API_KEY');
 
         if ($apiKey && $configuredKey && hash_equals($configuredKey, $apiKey)) {
-            // Find the first active admin user to associate the request context with
+            // Find the first active admin user to associate the request context with.
+            // Note: DB::raw('true') is intentional. Laravel's prepareBindings() casts
+            // PHP booleans to integers, which Postgres rejects on a `boolean` column
+            // (`operator does not exist: boolean = integer`).
             $user = User::where('is_active', \Illuminate\Support\Facades\DB::raw('true'))->first();
 
             if ($user) {

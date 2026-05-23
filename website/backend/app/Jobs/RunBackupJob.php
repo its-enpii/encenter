@@ -120,6 +120,8 @@ class RunBackupJob implements ShouldQueue
             ]);
 
             // 5. Upload to Google Drive with folder structure: Backup/20260516/file.sql.gz
+            // whereRaw is intentional: Postgres rejects boolean = integer comparisons,
+            // and Laravel binds PHP booleans as integers.
             $userStorage = UserStorage::where('user_id', $this->backupJob->triggered_by_user ?? $server->user_id)
                 ->where('provider', 'google_drive')
                 ->whereRaw('"is_active" = true')

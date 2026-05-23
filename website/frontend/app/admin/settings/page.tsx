@@ -1,9 +1,25 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { SettingsIcon, ActivityIcon } from "@/components/admin/Icons";
+import { apiFetch } from "@/lib/api";
+
+interface UserInfo {
+  email?: string;
+  name?: string;
+  last_login?: string | null;
+}
 
 export default function SettingsPage() {
+  const [user, setUser] = useState<UserInfo | null>(null);
+
+  useEffect(() => {
+    apiFetch("/auth/me")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setUser(data))
+      .catch(() => setUser(null));
+  }, []);
+
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
@@ -24,7 +40,7 @@ export default function SettingsPage() {
             </div>
             <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">General Configuration</h2>
           </div>
-          
+
           <div className="flex flex-col gap-4 text-sm text-slate-400">
             <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 flex flex-col gap-1">
               <span className="text-white font-medium">Coming Soon</span>
@@ -33,27 +49,29 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* System Info Card */}
+        {/* Active Session Card */}
         <div className="bg-slate-900/40 p-8 rounded-3xl border border-slate-800 space-y-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
               <ActivityIcon className="h-4 w-4 text-emerald-400" />
             </div>
-            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">System Info</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-slate-300">Active Session</h2>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
-              <span className="text-sm text-slate-500">Version</span>
-              <span className="text-sm text-emerald-400 font-mono">v1.0.0-beta</span>
+              <span className="text-sm text-slate-500">Operator</span>
+              <span className="text-sm text-white truncate max-w-[55%]">{user?.name ?? "—"}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
-              <span className="text-sm text-slate-500">Environment</span>
-              <span className="text-sm text-white">Production</span>
+              <span className="text-sm text-slate-500">Email</span>
+              <span className="text-sm text-white truncate max-w-[55%]" title={user?.email}>{user?.email ?? "—"}</span>
             </div>
             <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
-              <span className="text-sm text-slate-500">Node.js</span>
-              <span className="text-sm text-white">v20.x</span>
+              <span className="text-sm text-slate-500">Last login</span>
+              <span className="text-sm text-white">
+                {user?.last_login ? new Date(user.last_login).toLocaleString() : "—"}
+              </span>
             </div>
           </div>
         </div>
