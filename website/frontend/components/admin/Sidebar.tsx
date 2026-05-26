@@ -14,6 +14,7 @@ import {
   ClockIcon,
   WebhookIcon,
   UserIcon,
+  HelpCircleIcon,
 } from "./Icons";
 import { useAuth } from "@/lib/auth-context";
 
@@ -82,6 +83,7 @@ export const Sidebar = ({ isOpen, setIsOpen }: { isOpen?: boolean, setIsOpen?: (
             <SidebarLink href="/admin/storage" icon={<CloudIcon />} label="Cloud Storage" active={pathname === "/admin/storage"} />
             <SidebarLink href="/admin/webhooks" icon={<WebhookIcon />} label="Webhooks" active={pathname === "/admin/webhooks"} />
             <SidebarLink href="/admin/audit" icon={<ActivityIcon />} label="Audit Logs" active={pathname === "/admin/audit"} />
+            <SidebarLink href="/admin/help" icon={<HelpCircleIcon />} label="User Guide" active={pathname.startsWith("/admin/help")} />
             <SidebarLink href="/admin/settings" icon={<SettingsIcon />} label="System Settings" active={pathname === "/admin/settings"} />
             <SidebarLink href="/admin/profile" icon={<UserIcon />} label="Profile" active={pathname === "/admin/profile"} />
           </div>

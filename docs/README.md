@@ -4,7 +4,13 @@ EnCenter adalah aplikasi self-hosted yang berfungsi sebagai **Server Control Cen
 
 Dokumentasi ini dibagi menjadi beberapa bagian agar mudah dinavigasi sesuai kebutuhan Anda.
 
-## Daftar Dokumen
+## Untuk Pengguna Aplikasi
+
+Panduan untuk **operator** yang memakai dashboard EnCenter (bukan developer/installer) hidup langsung di dalam aplikasi: buka **Sidebar → User Guide** atau akses `/admin/help`.
+
+Sumber markdown-nya ada di [`website/frontend/content/user-guide/`](../website/frontend/content/user-guide/) dan di-render oleh halaman `/admin/help/[[...slug]]`. Edit file di sana untuk memperbarui dokumentasi yang ditampilkan ke user.
+
+## Daftar Dokumen (Developer)
 
 | File | Deskripsi |
 | --- | --- |
