@@ -69,91 +69,60 @@ class RunBackupJob implements ShouldQueue
 
         try {
             // Prevent Zombie processes and state overlap during retries
-            // Get fresh data from DB to ensure state is accurate
             $currentStatus = \App\Models\BackupJob::find($this->backupJob->id)->status;
             if ($currentStatus === 'success') {
-                return; // Already successful from a previous attempt
+                return;
             }
             
-            // 1. Prepare mysqldump command
+            // 1. Prepare mysqldump command (stream-based, no remote /tmp needed)
             $pwd = escapeshellarg($dbConn->db_password);
             $host = escapeshellarg($dbConn->db_host);
             $port = escapeshellarg($dbConn->db_port ?? 3306);
             $user = escapeshellarg($dbConn->db_username);
-            
-            // Fix: Wait to make sure unique random hash is truly unique per queue worker
-            usleep(random_int(100000, 500000));
-            $randomHash = substr(md5(uniqid(mt_rand(), true) . microtime(true)), 0, 13);
-            $remoteTmpDir = "/tmp/encenter_dump_{$randomHash}";
-            $errLog = "/tmp/dump_err_{$randomHash}.log";
-            $remoteTempPath = "/tmp/{$tempFileName}";
 
             if ($isAllDatabases) {
+                // Stream all databases as separate dumps concatenated
                 $dumpCommand = sprintf(
-                    "find /tmp -maxdepth 1 -name 'encenter_dump_*' -mmin +60 -exec rm -rf {} + 2>/dev/null; find /tmp -maxdepth 1 -name 'dump_err_*' -mmin +60 -delete 2>/dev/null; " .
-                    "set -e; mkdir -p %s; " .
-                    "DBS=\$(MYSQL_PWD=%s mysql -h %s -P %s -u %s -N -B -e \"SHOW DATABASES;\" 2> %s | grep -Ev " . escapeshellarg('^(information_schema|performance_schema|sys)$') . "); " .
-                    "if [ -z \"\$DBS\" ]; then echo 'No databases found' >> %s; exit 1; fi; " .
-                    "for DB in \$DBS; do MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s \"\$DB\" 2>> %s | gzip > %s/\${DB}.sql.gz; done; " .
-                    "tar -czf %s -C %s . && rm -rf %s",
-                    escapeshellarg($remoteTmpDir),
-                    $pwd, $host, $port, $user, escapeshellarg($errLog),
-                    escapeshellarg($errLog),
-                    $pwd, $host, $port, $user, escapeshellarg($errLog), escapeshellarg($remoteTmpDir),
-                    escapeshellarg($remoteTempPath), escapeshellarg($remoteTmpDir), escapeshellarg($remoteTmpDir)
+                    "DBS=\$(MYSQL_PWD=%s mysql -h %s -P %s -u %s -N -B -e \"SHOW DATABASES;\" | grep -Ev " . escapeshellarg('^(information_schema|performance_schema|sys)$') . "); " .
+                    "if [ -z \"\$DBS\" ]; then echo 'ERROR: No databases accessible' 1>&2; exit 1; fi; " .
+                    "(for DB in \$DBS; do " .
+                    "echo \"-- Database: \$DB\"; " .
+                    "MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s --databases \"\$DB\"; " .
+                    "done) | gzip",
+                    $pwd, $host, $port, $user,
+                    $pwd, $host, $port, $user
                 );
+                // Override extension since this is now a single .sql.gz, not tar.gz
+                $tempFileName = "{$label}_{$targetDb}_{$timestamp}.sql.gz";
+                $localTempPath = storage_path("app/backups/{$tempFileName}");
             } else {
                 $dbNameParam = escapeshellarg($dbConn->db_name);
                 $dumpCommand = sprintf(
-                    "find /tmp -maxdepth 1 -name 'encenter_dump_*' -mmin +60 -exec rm -rf {} + 2>/dev/null; find /tmp -maxdepth 1 -name 'dump_err_*' -mmin +60 -delete 2>/dev/null; " .
-                    "MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s %s 2> %s | gzip > %s",
-                    $pwd, $host, $port, $user, $dbNameParam,
-                    escapeshellarg($errLog), escapeshellarg($remoteTempPath)
+                    "MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s %s | gzip",
+                    $pwd, $host, $port, $user, $dbNameParam
                 );
             }
-            // 2. Execute on remote server
-            try {
-                // Remove execution timeout limit for PHP Worker
-                set_time_limit(0);
-                $sshService->execute($server, $dumpCommand);
-            } catch (Exception $e) {
-                // Read exact mysql error log if it exists
-                $detailedError = '';
-                try {
-                    // Try to reconnect if the session died
-                    $freshSsh = new SshService();
-                    $errorLogStr = $freshSsh->execute($server, "cat " . escapeshellarg($errLog) . " 2>/dev/null");
-                    if (trim($errorLogStr) !== '') {
-                        $detailedError = " MySQL Error Log: " . trim($errorLogStr);
-                    }
-                } catch (\Throwable $catE) {}
-                
-                throw new Exception($e->getMessage() . $detailedError);
-            }
-
-            // 3. Download via SFTP
-            $sftp = $sshService->sftp($server);
-            $sftp->get($remoteTempPath, $localTempPath);
-
-            // 4. Get file metadata and validate
-            $fileSize = filesize($localTempPath);
             
-            // An empty gzip file is 20 bytes. A database dump < 100 bytes is essentially empty/failed.
-            if ($fileSize < 100) {
-                $errorLogStr = '';
-                try {
-                    $errorLogStr = $sshService->execute($server, "cat " . escapeshellarg($errLog));
-                } catch (\Throwable $e) {}
-                
-                throw new Exception("Backup failed resulting in an empty file. MySQL Error: " . trim($errorLogStr));
+            // 2. Execute on remote server, streaming output directly to local file
+            try {
+                set_time_limit(0);
+                $sshService->streamToFile($server, $dumpCommand, $localTempPath);
+            } catch (Exception $e) {
+                throw new Exception($e->getMessage());
             }
 
-            // Immediately record size and mark upload start
+            // 3. Validate file size
+            $fileSize = file_exists($localTempPath) ? filesize($localTempPath) : 0;
+            if ($fileSize < 100) {
+                throw new Exception("Backup failed resulting in an empty file (size: {$fileSize} bytes).");
+            }
+
+            // 4. Record size and mark progress
             $durationSoFar = (int) ceil(microtime(true) - $startTime);
             $this->backupJob->update([
                 'file_name' => $tempFileName,
                 'file_size_bytes' => $fileSize,
-                'duration_seconds' => max(1, $durationSoFar) // Temporary update to show UI it's alive
+                'duration_seconds' => max(1, $durationSoFar)
             ]);
 
             // 5. Upload to Google Drive
@@ -168,16 +137,13 @@ class RunBackupJob implements ShouldQueue
 
             $googleDriveService->setAccessToken($userStorage);
             
-            // Get or create root folder (e.g., "Backup")
             $rootFolderId = $googleDriveService->getOrCreateFolderByName($userStorage->folder_name ?: 'Backup');
             if ($rootFolderId !== $userStorage->folder_id) {
                 $userStorage->update(['folder_id' => $rootFolderId]);
             }
 
-            // Get or create date subfolder (e.g., "20260516") inside root folder
             $dateFolderId = $googleDriveService->getOrCreateSubfolder($dateFolder, $rootFolderId);
 
-            // Set specific timeout for GDrive upload based on file size (e.g. max 1 hr)
             set_time_limit(3600);
 
             $driveFileId = $googleDriveService->uploadFile(
@@ -224,28 +190,15 @@ class RunBackupJob implements ShouldQueue
                 }
             }
 
-            // 7. Cleanup
-            try {
-                // If sftp variable hasn't been defined yet (e.g. error before sftp), this would fail.
-                if (isset($sftp)) {
-                    // Re-connect SFTP if it timed out during Google Drive Upload
-                    try {
-                        $sftp->delete($remoteTempPath);
-                    } catch (\Throwable $e) {
-                        $sftp = $sshService->sftp($server);
-                        $sftp->delete($remoteTempPath);
-                    }
-                }
-                $sshService->execute($server, "rm -rf " . escapeshellarg(dirname($errLog)) . " " . escapeshellarg($errLog) . " " . escapeshellarg($remoteTempPath) . " " . escapeshellarg($remoteTmpDir) . " 2>/dev/null");
-            } catch (\Throwable $e) {
-                // Ignore cleanup errors so they don't trigger the main catch block
-                // which would mark a successful backup as failed.
-            }
+            // 7. Cleanup local file only (no remote files were ever created)
             try {
                 if (file_exists($localTempPath)) {
                     unlink($localTempPath);
                 }
             } catch (\Throwable $e) {}
+
+            // Explicitly delete from queue to prevent any retry
+            $this->delete();
 
         } catch (Throwable $e) {
             $duration = (int) ceil(microtime(true) - $startTime);
@@ -256,28 +209,6 @@ class RunBackupJob implements ShouldQueue
                 'error_message' => $e->getMessage(),
             ]);
 
-            $user = \App\Models\User::find($this->backupJob->triggered_by_user ?? $server->user_id ?? null);
-            if ($user) {
-                try {
-                    $webhookService->send('backup.failed', [
-                        'backup_job_id' => $this->backupJob->id,
-                        'server_label' => $server->label ?? 'Unknown',
-                        'database_label' => $dbConn->label ?? 'Unknown',
-                        'status' => 'failed',
-                        'error_message' => $e->getMessage(),
-                        'duration_seconds' => max(1, $duration),
-                        'triggered_by' => $this->backupJob->triggered_by,
-                    ], $user);
-
-                    $this->backupJob->update([
-                        'webhook_sent' => \Illuminate\Support\Facades\DB::raw('true'),
-                        'webhook_sent_at' => now(),
-                    ]);
-                } catch (\Throwable $we) {
-                    \Illuminate\Support\Facades\Log::error("Failed to send error webhook for backup {$this->backupJob->id}: " . $we->getMessage());
-                }
-            }
-
             // Cleanup local if exists
             try {
                 if (file_exists($localTempPath)) {
@@ -286,6 +217,38 @@ class RunBackupJob implements ShouldQueue
             } catch (\Throwable $e) {}
 
             throw $e;
+        }
+    }
+
+    /**
+     * Called by Laravel only when all retries are exhausted (final failure).
+     */
+    public function failed(Throwable $exception): void
+    {
+        $webhookService = app(\App\Services\WebhookService::class);
+        $dbConn = $this->backupJob->databaseConnection;
+        $server = $dbConn->server ?? null;
+
+        $user = \App\Models\User::find($this->backupJob->triggered_by_user ?? $server->user_id ?? null);
+        if ($user) {
+            try {
+                $webhookService->send('backup.failed', [
+                    'backup_job_id' => $this->backupJob->id,
+                    'server_label' => $server->label ?? 'Unknown',
+                    'database_label' => $dbConn->label ?? 'Unknown',
+                    'status' => 'failed',
+                    'error_message' => $exception->getMessage(),
+                    'duration_seconds' => $this->backupJob->duration_seconds ?? 0,
+                    'triggered_by' => $this->backupJob->triggered_by,
+                ], $user);
+
+                $this->backupJob->update([
+                    'webhook_sent' => \Illuminate\Support\Facades\DB::raw('true'),
+                    'webhook_sent_at' => now(),
+                ]);
+            } catch (\Throwable $we) {
+                \Illuminate\Support\Facades\Log::error("Failed to send error webhook for backup {$this->backupJob->id}: " . $we->getMessage());
+            }
         }
     }
 }

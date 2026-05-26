@@ -90,4 +90,41 @@ class SshService
 
         return (string) $result;
     }
+
+    /**
+     * Stream a command's stdout directly to a local file.
+     * Use this for backup dumps to avoid writing to remote /tmp.
+     */
+    public function streamToFile(Server $server, string $command, string $localFilePath): void
+    {
+        $ssh = $this->connect($server);
+        $ssh->setTimeout(7200);
+        if (method_exists($ssh, 'setKeepAlive')) {
+            $ssh->setKeepAlive(10);
+        }
+
+        $fp = fopen($localFilePath, 'wb');
+        if ($fp === false) {
+            throw new Exception("Cannot open local file for writing: {$localFilePath}");
+        }
+
+        try {
+            $ssh->exec($command, function ($chunk) use ($fp) {
+                fwrite($fp, $chunk);
+            });
+        } finally {
+            fclose($fp);
+        }
+
+        $exitStatus = $ssh->getExitStatus();
+        if ($exitStatus !== 0) {
+            $statusStr = $exitStatus === false ? 'unknown/timeout' : (string)$exitStatus;
+            // Read stderr from the command
+            $stderr = '';
+            try {
+                $stderr = (string) $ssh->getStdError();
+            } catch (\Throwable $e) {}
+            throw new Exception("Stream command failed with exit status " . $statusStr . ": " . $stderr);
+        }
+    }
 }
