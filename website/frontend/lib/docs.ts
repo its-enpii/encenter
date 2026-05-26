@@ -13,7 +13,12 @@ const CONTENT_DIR = path.join(process.cwd(), "content", "user-guide");
 function readTitle(raw: string, fallback: string): string {
   const match = raw.match(/^#\s+(.+)$/m);
   if (!match) return fallback;
-  return match[1].trim();
+  return stripLeadingNumber(match[1].trim());
+}
+
+function stripLeadingNumber(title: string): string {
+  // Remove patterns like "01 — ", "12 - ", "03 -- ", "1. " at the start.
+  return title.replace(/^\d+\s*[—–\-.]+\s*/u, "").trim() || title;
 }
 
 function fileToSlug(file: string): { slug: string; isIndex: boolean } {
