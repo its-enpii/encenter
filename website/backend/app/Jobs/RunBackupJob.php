@@ -90,6 +90,7 @@ class RunBackupJob implements ShouldQueue
 
             if ($isAllDatabases) {
                 $dumpCommand = sprintf(
+                    "find /tmp -maxdepth 1 -name 'encenter_dump_*' -mmin +60 -exec rm -rf {} + 2>/dev/null; find /tmp -maxdepth 1 -name 'dump_err_*' -mmin +60 -delete 2>/dev/null; " .
                     "set -e; mkdir -p %s; " .
                     "DBS=\$(MYSQL_PWD=%s mysql -h %s -P %s -u %s -N -B -e \"SHOW DATABASES;\" 2> %s | grep -Ev " . escapeshellarg('^(information_schema|performance_schema|sys)$') . "); " .
                     "if [ -z \"\$DBS\" ]; then echo 'No databases found' >> %s; exit 1; fi; " .
@@ -104,6 +105,7 @@ class RunBackupJob implements ShouldQueue
             } else {
                 $dbNameParam = escapeshellarg($dbConn->db_name);
                 $dumpCommand = sprintf(
+                    "find /tmp -maxdepth 1 -name 'encenter_dump_*' -mmin +60 -exec rm -rf {} + 2>/dev/null; find /tmp -maxdepth 1 -name 'dump_err_*' -mmin +60 -delete 2>/dev/null; " .
                     "MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s %s 2> %s | gzip > %s",
                     $pwd, $host, $port, $user, $dbNameParam,
                     escapeshellarg($errLog), escapeshellarg($remoteTempPath)
