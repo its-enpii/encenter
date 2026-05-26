@@ -84,15 +84,9 @@ class RunBackupJob implements ShouldQueue
             // Fix: Wait to make sure unique random hash is truly unique per queue worker
             usleep(random_int(100000, 500000));
             $randomHash = substr(md5(uniqid(mt_rand(), true) . microtime(true)), 0, 13);
-            
             $remoteTmpDir = "/tmp/encenter_dump_{$randomHash}";
             $errLog = "/tmp/dump_err_{$randomHash}.log";
             $remoteTempPath = "/tmp/{$tempFileName}";
-
-            // Cleanup leftover files from previous failed backups before starting
-            try {
-                $sshService->execute($server, "rm -rf /tmp/encenter_dump_* /tmp/dump_err_* 2>/dev/null; true");
-            } catch (\Throwable $e) {}
 
             if ($isAllDatabases) {
                 $dumpCommand = sprintf(
