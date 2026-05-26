@@ -19,7 +19,8 @@ jobs:
             cd /home/enpii/studio/encenter
             git pull origin main
             docker network inspect web-network >/dev/null 2>&1 || docker network create web-network
-            docker compose up -d --build
+            docker compose build --no-cache
+            docker compose up -d
             docker compose restart envault-nginx
             # Bind-mount can leave a stale bootstrap/cache from previous builds
             # (e.g. referencing dev-only providers like Laravel\Pail). Wipe the
