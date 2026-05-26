@@ -30,6 +30,16 @@ interface BackupJob {
 }
 
 export default function BackupHistoryPage() {
+  const formatDuration = (seconds: number): string => {
+    if (!seconds) return '-';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    if (h > 0) return `${h}j ${m}m ${s}d`;
+    if (m > 0) return `${m}m ${s}d`;
+    return `${s}d`;
+  };
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [selectedError, setSelectedError] = useState<{ open: boolean, message: string }>({
     open: false,
@@ -99,7 +109,7 @@ export default function BackupHistoryPage() {
           <p>{item.started_at ? new Date(item.started_at).toLocaleString() : '-'}</p>
           <p className="text-[10px] text-slate-500 flex items-center gap-1">
             <ClockIcon className="h-3 w-3" />
-            {item.duration_seconds ? `${item.duration_seconds}s` : '-'}
+            {item.duration_seconds ? formatDuration(item.duration_seconds) : '-'}
           </p>
         </div>
       )

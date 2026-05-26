@@ -91,6 +91,19 @@ class SshService
     }
 
     /**
+     * Fire-and-forget: send command and disconnect without waiting for exit.
+     * Use for starting background processes (nohup) where exit status is irrelevant.
+     */
+    public function executeBackground(Server $server, string $command): void
+    {
+        $ssh = $this->connect($server);
+        $ssh->setTimeout(15);
+        $wrappedCmd = "({$command}) > /dev/null 2>&1 < /dev/null & disown; exit 0";
+        $ssh->exec($wrappedCmd);
+        $ssh->disconnect();
+    }
+
+    /**
      * Stream a command's stdout directly to a local file.
      * Use this for backup dumps to avoid writing to remote /tmp.
      */

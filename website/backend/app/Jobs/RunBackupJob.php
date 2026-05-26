@@ -27,6 +27,16 @@ class RunBackupJob implements ShouldQueue
         $this->backupJob = $backupJob;
     }
 
+    private function formatDuration(int $seconds): string
+    {
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        $s = $seconds % 60;
+        if ($h > 0) return "{$h}j {$m}m {$s}d";
+        if ($m > 0) return "{$m}m {$s}d";
+        return "{$s}d";
+    }
+
     public function handle(SshService $sshService, GoogleDriveService $googleDriveService, \App\Services\WebhookService $webhookService): void
     {
         $startTime = microtime(true);
@@ -85,7 +95,7 @@ class RunBackupJob implements ShouldQueue
             $remotePidEsc = escapeshellarg($remotePid);
 
             $bgCmd = "nohup bash -c '{$dumpCmd} 2>{$remoteErr} | gzip > {$remoteFile} && echo done > {$remoteDone}' > /dev/null 2>&1 & echo \$! > {$remotePid}";
-            $sshService->execute($server, $bgCmd);
+            $sshService->executeBackground($server, $bgCmd);
 
             // Poll until done or timeout (2 hours)
             $maxWait = 7200;
@@ -186,7 +196,7 @@ class RunBackupJob implements ShouldQueue
                         'file_name' => $tempFileName,
                         'file_size_bytes' => $fileSize,
                         'gdrive_file_url' => "https://drive.google.com/open?id={$dateFolderId}",
-                        'duration_seconds' => max(1, $duration),
+                        'duration_seconds' => $this->formatDuration(max(1, $duration)),
                         'triggered_by' => $this->backupJob->triggered_by,
                     ], $user);
                     $this->backupJob->update([
@@ -234,7 +244,7 @@ class RunBackupJob implements ShouldQueue
                         'database_label' => $dbConn->label ?? 'Unknown',
                         'status' => 'failed',
                         'error_message' => $e->getMessage(),
-                        'duration_seconds' => max(1, $duration),
+                        'duration_seconds' => $this->formatDuration(max(1, $duration)),
                         'triggered_by' => $this->backupJob->triggered_by,
                     ], $user);
                     $this->backupJob->update([
