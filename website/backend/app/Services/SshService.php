@@ -74,6 +74,11 @@ class SshService
         // Timeout disable for long running commands.
         $ssh->setTimeout(0);
         
+        // Prevent broken pipe on long DB backups without output
+        if (method_exists($ssh, 'setKeepAlive')) {
+            $ssh->setKeepAlive(10);
+        }
+        
         $result = $ssh->exec($command);
         $exitStatus = $ssh->getExitStatus();
         

@@ -16,7 +16,7 @@ services:
     build: ./website/backend
     container_name: envault-worker
     restart: unless-stopped
-    command: php artisan queue:work --verbose --tries=3 --timeout=600
+    command: php artisan queue:work --verbose --tries=3 --timeout=0
     volumes:
       - ./website/backend:/var/www/html
       - backend-vendor:/var/www/html/vendor

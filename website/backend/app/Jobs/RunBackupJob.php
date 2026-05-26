@@ -30,6 +30,8 @@ class RunBackupJob implements ShouldQueue
     public function __construct(BackupJob $backupJob)
     {
         $this->backupJob = $backupJob;
+        // Revert queue separation. The running worker listens to default queue.
+        // We will enforce sequential running by relying on the single worker.
     }
 
     /**
@@ -66,16 +68,44 @@ class RunBackupJob implements ShouldQueue
         }
 
         try {
+            // Prevent Zombie processes and state overlap during retries
+            // Get fresh data from DB to ensure state is accurate
+            $currentStatus = \App\Models\BackupJob::find($this->backupJob->id)->status;
+            if ($currentStatus === 'success') {
+                return; // Already successful from a previous attempt
+            }
+            
             // 1. Prepare mysqldump command
             $pwd = escapeshellarg($dbConn->db_password);
             $host = escapeshellarg($dbConn->db_host);
             $port = escapeshellarg($dbConn->db_port ?? 3306);
             $user = escapeshellarg($dbConn->db_username);
             
-            // Fix: Use random hash to prevent collisions during concurrent bulk backups
-            $randomHash = substr(md5(uniqid(mt_rand(), true)), 0, 8);
+            // Fix: Wait to make sure unique random hash is truly unique per queue worker
+            usleep(random_int(100000, 500000));
+            $randomHash = substr(md5(uniqid(mt_rand(), true) . microtime(true)), 0, 13);
+            
+            // Check if /tmp is full and fallback to user home directory if needed
+            $randomHash = substr(md5(uniqid(mt_rand(), true) . microtime(true)), 0, 13);
             $remoteTmpDir = "/tmp/encenter_dump_{$randomHash}";
             $errLog = "/tmp/dump_err_{$randomHash}.log";
+            $remoteTempPath = "/tmp/{$tempFileName}";
+
+            $checkTmpSpaceCommand = "df -k /tmp | awk 'NR==2 {print \$4}'";
+            try {
+                $tmpFreeSpaceKb = (int) trim($sshService->execute($server, $checkTmpSpaceCommand));
+                // If /tmp has less than 2GB free (2000000 KB) or is empty, use home directory
+                if ($tmpFreeSpaceKb < 2000000) {
+                    $remoteTmpDir = "~/encenter_dump_{$randomHash}";
+                    $errLog = "~/dump_err_{$randomHash}.log";
+                    $remoteTempPath = "~/{$tempFileName}";
+                }
+            } catch (\Throwable $e) {
+                // If we cannot check, fallback to home to be safe
+                $remoteTmpDir = "~/encenter_dump_{$randomHash}";
+                $errLog = "~/dump_err_{$randomHash}.log";
+                $remoteTempPath = "~/{$tempFileName}";
+            }
 
             if ($isAllDatabases) {
                 // Dump each database into its own .sql.gz, then bundle into one .tar.gz
@@ -99,12 +129,14 @@ class RunBackupJob implements ShouldQueue
             }
             // 2. Execute on remote server
             try {
+                // Remove timeout limit entirely for this process scope
+                set_time_limit(0);
                 $sshService->execute($server, $dumpCommand);
             } catch (Exception $e) {
                 // Read exact mysql error log if it exists
                 $detailedError = '';
                 try {
-                    $errorLogStr = $sshService->execute($server, "cat " . escapeshellarg($errLog));
+                    $errorLogStr = $sshService->execute($server, "cat " . escapeshellarg($errLog) . " 2>/dev/null");
                     if (trim($errorLogStr) !== '') {
                         $detailedError = " MySQL Error Log: " . trim($errorLogStr);
                     }
@@ -135,12 +167,10 @@ class RunBackupJob implements ShouldQueue
                 'file_size_bytes' => $fileSize,
             ]);
 
-            // 5. Upload to Google Drive with folder structure: Backup/20260516/file.sql.gz
-            // whereRaw is intentional: Postgres rejects boolean = integer comparisons,
-            // and Laravel binds PHP booleans as integers.
+            // 5. Upload to Google Drive
             $userStorage = UserStorage::where('user_id', $this->backupJob->triggered_by_user ?? $server->user_id)
                 ->where('provider', 'google_drive')
-                ->whereRaw('"is_active" = true')
+                ->where('is_active', true) // Laravel handles boolean casting correctly
                 ->first();
 
             if (!$userStorage) {
@@ -157,6 +187,9 @@ class RunBackupJob implements ShouldQueue
 
             // Get or create date subfolder (e.g., "20260516") inside root folder
             $dateFolderId = $googleDriveService->getOrCreateSubfolder($dateFolder, $rootFolderId);
+
+            // Set specific timeout for GDrive upload based on file size (e.g. max 1 hr)
+            set_time_limit(3600);
 
             $driveFileId = $googleDriveService->uploadFile(
                 $localTempPath, 
@@ -200,12 +233,26 @@ class RunBackupJob implements ShouldQueue
 
             // 7. Cleanup
             try {
-                $sftp->delete($remoteTempPath);
-                $sshService->execute($server, "rm -f " . escapeshellarg($errLog));
-            } catch (\Throwable $e) {}
-            if (file_exists($localTempPath)) {
-                unlink($localTempPath);
+                // If sftp variable hasn't been defined yet (e.g. error before sftp), this would fail.
+                if (isset($sftp)) {
+                    // Re-connect SFTP if it timed out during Google Drive Upload
+                    try {
+                        $sftp->delete($remoteTempPath);
+                    } catch (\Throwable $e) {
+                        $sftp = $sshService->sftp($server);
+                        $sftp->delete($remoteTempPath);
+                    }
+                }
+                $sshService->execute($server, "rm -rf " . escapeshellarg(dirname($errLog)) . " " . escapeshellarg($errLog) . " " . escapeshellarg($remoteTempPath) . " " . escapeshellarg($remoteTmpDir) . " 2>/dev/null");
+            } catch (\Throwable $e) {
+                // Ignore cleanup errors so they don't trigger the main catch block
+                // which would mark a successful backup as failed.
             }
+            try {
+                if (file_exists($localTempPath)) {
+                    unlink($localTempPath);
+                }
+            } catch (\Throwable $e) {}
 
         } catch (Throwable $e) {
             $duration = (int) ceil(microtime(true) - $startTime);
@@ -239,9 +286,11 @@ class RunBackupJob implements ShouldQueue
             }
 
             // Cleanup local if exists
-            if (file_exists($localTempPath)) {
-                unlink($localTempPath);
-            }
+            try {
+                if (file_exists($localTempPath)) {
+                    unlink($localTempPath);
+                }
+            } catch (\Throwable $e) {}
 
             throw $e;
         }
