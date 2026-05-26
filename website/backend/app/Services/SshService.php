@@ -71,8 +71,8 @@ class SshService
     {
         $ssh = $this->connect($server);
         
-        // Timeout disable for long running commands.
-        $ssh->setTimeout(0);
+        // Max timeout 2 hours (7200s). Do not use 0 (infinite) to prevent permanent hanging if network silently drops.
+        $ssh->setTimeout(7200);
         
         // Prevent broken pipe on long DB backups without output
         if (method_exists($ssh, 'setKeepAlive')) {

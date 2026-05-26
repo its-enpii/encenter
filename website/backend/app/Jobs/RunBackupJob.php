@@ -129,7 +129,7 @@ class RunBackupJob implements ShouldQueue
             }
             // 2. Execute on remote server
             try {
-                // Remove timeout limit entirely for this process scope
+                // Remove execution timeout limit for PHP Worker
                 set_time_limit(0);
                 $sshService->execute($server, $dumpCommand);
             } catch (Exception $e) {
@@ -164,9 +164,12 @@ class RunBackupJob implements ShouldQueue
                 throw new Exception("Backup failed resulting in an empty file. MySQL Error: " . trim($errorLogStr));
             }
 
+            // Immediately record size and mark upload start
+            $durationSoFar = (int) ceil(microtime(true) - $startTime);
             $this->backupJob->update([
                 'file_name' => $tempFileName,
                 'file_size_bytes' => $fileSize,
+                'duration_seconds' => max(1, $durationSoFar) // Temporary update to show UI it's alive
             ]);
 
             // 5. Upload to Google Drive
@@ -198,6 +201,10 @@ class RunBackupJob implements ShouldQueue
                 $tempFileName, 
                 $dateFolderId
             );
+
+            if (!$driveFileId) {
+                throw new Exception("Google Drive upload failed silently (no file ID returned).");
+            }
 
             // 6. Success!
             $duration = (int) ceil(microtime(true) - $startTime);
