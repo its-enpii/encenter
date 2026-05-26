@@ -71,6 +71,14 @@ class RunBackupJob implements ShouldQueue
             // Prevent Zombie processes and state overlap during retries
             $currentStatus = \App\Models\BackupJob::find($this->backupJob->id)->status;
             if ($currentStatus === 'success') {
+                $this->delete();
+                return;
+            }
+            
+            // If this is a retry attempt, skip - first attempt likely already succeeded
+            // but worker timed out before marking complete.
+            if ($this->attempts() > 1) {
+                $this->delete();
                 return;
             }
             
