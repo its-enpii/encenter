@@ -136,7 +136,9 @@ class RunBackupJob implements ShouldQueue
                 // Read exact mysql error log if it exists
                 $detailedError = '';
                 try {
-                    $errorLogStr = $sshService->execute($server, "cat " . escapeshellarg($errLog) . " 2>/dev/null");
+                    // Try to reconnect if the session died
+                    $freshSsh = new SshService();
+                    $errorLogStr = $freshSsh->execute($server, "cat " . escapeshellarg($errLog) . " 2>/dev/null");
                     if (trim($errorLogStr) !== '') {
                         $detailedError = " MySQL Error Log: " . trim($errorLogStr);
                     }
@@ -170,7 +172,7 @@ class RunBackupJob implements ShouldQueue
             // 5. Upload to Google Drive
             $userStorage = UserStorage::where('user_id', $this->backupJob->triggered_by_user ?? $server->user_id)
                 ->where('provider', 'google_drive')
-                ->where('is_active', true) // Laravel handles boolean casting correctly
+                ->where('is_active', \Illuminate\Support\Facades\DB::raw('true'))
                 ->first();
 
             if (!$userStorage) {
