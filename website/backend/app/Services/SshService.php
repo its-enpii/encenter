@@ -70,11 +70,7 @@ class SshService
     public function execute(Server $server, string $command): string
     {
         $ssh = $this->connect($server);
-        
-        // Max timeout 2 hours (7200s). Do not use 0 (infinite) to prevent permanent hanging if network silently drops.
         $ssh->setTimeout(7200);
-        
-        // Prevent broken pipe on long DB backups without output
         if (method_exists($ssh, 'setKeepAlive')) {
             $ssh->setKeepAlive(10);
         }
@@ -83,8 +79,9 @@ class SshService
         $exitStatus = $ssh->getExitStatus();
         
         if ($exitStatus !== 0) {
-            $statusStr = $exitStatus === false ? 'connection dropped' : (string)$exitStatus;
-            throw new Exception("Command failed with exit status {$statusStr}: " . $result);
+            $statusStr = $exitStatus === false ? 'unknown/timeout/dropped' : (string)$exitStatus;
+            \Illuminate\Support\Facades\Log::error("SSH Exec Failed", ['command' => $command, 'exit' => $statusStr, 'output' => $result]);
+            throw new Exception("SSH Command failed [{$statusStr}] cmd: {$command}");
         }
 
         return (string) $result;
@@ -97,11 +94,12 @@ class SshService
     public function executeBackground(Server $server, string $command): void
     {
         $ssh = $this->connect($server);
-        $ssh->setTimeout(15);
-        $wrappedCmd = "({$command}) > /dev/null 2>&1 < /dev/null & disown; exit 0";
-        $ssh->exec($wrappedCmd);
-        $ssh->disconnect();
+        $ssh->setTimeout(30);
+        $ssh->exec($command);
+        // Do not check exit status - background process may outlive the shell
     }
+}
+}
 
     /**
      * Stream a command's stdout directly to a local file.

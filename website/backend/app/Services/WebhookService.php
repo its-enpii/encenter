@@ -19,10 +19,8 @@ class WebhookService
      */
     public function send(string $event, array $data, User $user): array
     {
-        // DB::raw('true') is intentional: Laravel binds PHP booleans as integers,
-        // which Postgres rejects against a `boolean` column.
         $settings = $user->webhookSettings()
-            ->where('is_active', \Illuminate\Support\Facades\DB::raw('true'))
+            ->whereRaw('"is_active" = true')
             ->get();
 
         $results = [];

@@ -94,32 +94,51 @@ class RunBackupJob implements ShouldQueue
             $remoteDoneEsc = escapeshellarg($remoteDone);
             $remotePidEsc = escapeshellarg($remotePid);
 
-            $bgCmd = "nohup bash -c '{$dumpCmd} 2>{$remoteErr} | gzip > {$remoteFile} && echo done > {$remoteDone}' > /dev/null 2>&1 & echo \$! > {$remotePid}";
+            // Encode the inner command in base64 to avoid quote escaping issues
+            $innerCmd = "{$dumpCmd} 2>{$remoteErr} | gzip > {$remoteFile} && echo done > {$remoteDone}";
+            $encodedCmd = base64_encode($innerCmd);
+            $bgCmd = "nohup bash -c \"\$(echo {$encodedCmd} | base64 -d)\" > /dev/null 2>&1 & echo \$! > {$remotePid}";
             $sshService->executeBackground($server, $bgCmd);
+
+            // Keep a single SSH connection for polling to avoid connection drops
+            $sshPolling = $sshService->connect($server);
+            $sshPolling->setTimeout(15);
+            if (method_exists($sshPolling, 'setKeepAlive')) {
+                $sshPolling->setKeepAlive(10);
+            }
 
             // Poll until done or timeout (2 hours)
             $maxWait = 7200;
             $waited = 0;
+            $interval = 5;
             while ($waited < $maxWait) {
-                // Fast polling early to detect immediate errors, slower after
-                $interval = $waited < 30 ? 5 : 60;
                 sleep($interval);
                 $waited += $interval;
                 try {
-                    $doneCheck = $sshService->execute($server, "cat {$remoteDoneEsc} 2>/dev/null");
-                    if (trim($doneCheck) === 'done') {
+                    $doneCheck = trim($sshPolling->exec("cat {$remoteDoneEsc} 2>/dev/null"));
+                    if ($doneCheck === 'done') {
                         break;
                     }
                     // Check if process still running
-                    $pidVal = trim($sshService->execute($server, "cat {$remotePidEsc} 2>/dev/null"));
-                    if ($pidVal && trim($sshService->execute($server, "kill -0 {$pidVal} 2>/dev/null; echo \$?")) !== '0') {
-                        // Process died without done file
-                        $errMsg = $sshService->execute($server, "cat {$remoteErrEsc} 2>/dev/null");
-                        throw new Exception("Dump process died unexpectedly. Error: " . trim($errMsg));
+                    $pidVal = trim($sshPolling->exec("cat {$remotePidEsc} 2>/dev/null"));
+                    if ($pidVal) {
+                        $isAlive = trim($sshPolling->exec("kill -0 {$pidVal} 2>/dev/null; echo \$?"));
+                        if ($isAlive !== '0') {
+                            // Process died without done file
+                            $errMsg = trim($sshPolling->exec("cat {$remoteErrEsc} 2>/dev/null"));
+                            throw new Exception("Dump process died unexpectedly. Error: " . $errMsg);
+                        }
                     }
                 } catch (Exception $e) {
                     if (str_contains($e->getMessage(), 'Dump process died')) {
                         throw $e;
+                    }
+                    // Transient SSH error (e.g. connection dropped) - attempt to reconnect
+                    try {
+                        $sshPolling = $sshService->connect($server);
+                    } catch (\Throwable $reconE) {
+                        // Reconnect failed completely, fail the job
+                        throw new Exception("SSH Connection lost and cannot reconnect: " . $reconE->getMessage());
                     }
                 }
             }
@@ -129,7 +148,7 @@ class RunBackupJob implements ShouldQueue
             }
 
             // Check error log
-            $errContent = trim($sshService->execute($server, "cat {$remoteErrEsc} 2>/dev/null"));
+            $errContent = trim($sshPolling->exec("cat {$remoteErrEsc} 2>/dev/null"));
             if (!empty($errContent) && stripos($errContent, 'error') !== false) {
                 throw new Exception("Dump error: " . $errContent);
             }
