@@ -85,37 +85,21 @@ class RunBackupJob implements ShouldQueue
             usleep(random_int(100000, 500000));
             $randomHash = substr(md5(uniqid(mt_rand(), true) . microtime(true)), 0, 13);
             
-            // Check if /tmp is full and fallback to user home directory if needed
             $randomHash = substr(md5(uniqid(mt_rand(), true) . microtime(true)), 0, 13);
             $remoteTmpDir = "/tmp/encenter_dump_{$randomHash}";
             $errLog = "/tmp/dump_err_{$randomHash}.log";
             $remoteTempPath = "/tmp/{$tempFileName}";
 
-            $checkTmpSpaceCommand = "df -k /tmp | awk 'NR==2 {print \$4}'";
-            try {
-                $tmpFreeSpaceKb = (int) trim($sshService->execute($server, $checkTmpSpaceCommand));
-                // If /tmp has less than 2GB free (2000000 KB) or is empty, use home directory
-                if ($tmpFreeSpaceKb < 2000000) {
-                    $remoteTmpDir = "~/encenter_dump_{$randomHash}";
-                    $errLog = "~/dump_err_{$randomHash}.log";
-                    $remoteTempPath = "~/{$tempFileName}";
-                }
-            } catch (\Throwable $e) {
-                // If we cannot check, fallback to home to be safe
-                $remoteTmpDir = "~/encenter_dump_{$randomHash}";
-                $errLog = "~/dump_err_{$randomHash}.log";
-                $remoteTempPath = "~/{$tempFileName}";
-            }
-
             if ($isAllDatabases) {
-                // Dump each database into its own .sql.gz, then bundle into one .tar.gz
                 $dumpCommand = sprintf(
                     "set -e; mkdir -p %s; " .
-                    "DBS=\$(MYSQL_PWD=%s mysql -h %s -P %s -u %s -N -B -e \"SHOW DATABASES;\" 2> %s | grep -Ev " . escapeshellarg('^(information_schema|performance_schema|mysql|sys)$') . "); " .
+                    "DBS=\$(MYSQL_PWD=%s mysql -h %s -P %s -u %s -N -B -e \"SHOW DATABASES;\" 2> %s | grep -Ev " . escapeshellarg('^(information_schema|performance_schema|sys)$') . "); " .
+                    "if [ -z \"\$DBS\" ]; then echo 'No databases found' >> %s; exit 1; fi; " .
                     "for DB in \$DBS; do MYSQL_PWD=%s mysqldump --single-transaction --quick --skip-lock-tables -h %s -P %s -u %s \"\$DB\" 2>> %s | gzip > %s/\${DB}.sql.gz; done; " .
                     "tar -czf %s -C %s . && rm -rf %s",
                     escapeshellarg($remoteTmpDir),
                     $pwd, $host, $port, $user, escapeshellarg($errLog),
+                    escapeshellarg($errLog),
                     $pwd, $host, $port, $user, escapeshellarg($errLog), escapeshellarg($remoteTmpDir),
                     escapeshellarg($remoteTempPath), escapeshellarg($remoteTmpDir), escapeshellarg($remoteTmpDir)
                 );
