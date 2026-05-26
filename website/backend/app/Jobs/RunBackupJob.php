@@ -90,8 +90,9 @@ class RunBackupJob implements ShouldQueue
             // Poll until done or timeout (2 hours)
             $maxWait = 7200;
             $waited = 0;
-            $interval = 10;
             while ($waited < $maxWait) {
+                // Fast polling early to detect immediate errors, slower after
+                $interval = $waited < 30 ? 5 : 60;
                 sleep($interval);
                 $waited += $interval;
                 try {

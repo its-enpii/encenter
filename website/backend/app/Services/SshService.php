@@ -83,9 +83,8 @@ class SshService
         $exitStatus = $ssh->getExitStatus();
         
         if ($exitStatus !== 0) {
-            // phpseclib getExitStatus() returns false if channel is closed without status (e.g. timeout, kill)
-            $statusStr = $exitStatus === false ? 'unknown/timeout' : (string)$exitStatus;
-            throw new Exception("Command failed with exit status " . $statusStr . ": " . $result);
+            $statusStr = $exitStatus === false ? 'connection dropped' : (string)$exitStatus;
+            throw new Exception("Command failed with exit status {$statusStr}: " . $result);
         }
 
         return (string) $result;
