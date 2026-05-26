@@ -71,8 +71,11 @@ class RunBackupJob implements ShouldQueue
             $host = escapeshellarg($dbConn->db_host);
             $port = escapeshellarg($dbConn->db_port ?? 3306);
             $user = escapeshellarg($dbConn->db_username);
-            $remoteTmpDir = "/tmp/encenter_dump_" . uniqid();
-            $errLog = "/tmp/dump_err_" . uniqid() . ".log";
+            
+            // Fix: Use random hash to prevent collisions during concurrent bulk backups
+            $randomHash = substr(md5(uniqid(mt_rand(), true)), 0, 8);
+            $remoteTmpDir = "/tmp/encenter_dump_{$randomHash}";
+            $errLog = "/tmp/dump_err_{$randomHash}.log";
 
             if ($isAllDatabases) {
                 // Dump each database into its own .sql.gz, then bundle into one .tar.gz
@@ -196,8 +199,13 @@ class RunBackupJob implements ShouldQueue
             }
 
             // 7. Cleanup
-            $sftp->delete($remoteTempPath);
-            unlink($localTempPath);
+            try {
+                $sftp->delete($remoteTempPath);
+                $sshService->execute($server, "rm -f " . escapeshellarg($errLog));
+            } catch (\Throwable $e) {}
+            if (file_exists($localTempPath)) {
+                unlink($localTempPath);
+            }
 
         } catch (Throwable $e) {
             $duration = (int) ceil(microtime(true) - $startTime);

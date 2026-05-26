@@ -75,9 +75,11 @@ class SshService
         $ssh->setTimeout(0);
         
         $result = $ssh->exec($command);
+        $exitStatus = $ssh->getExitStatus();
         
-        if ($ssh->getExitStatus() !== 0) {
-            throw new Exception("Command failed with exit status {$ssh->getExitStatus()}: " . $result);
+        if ($exitStatus !== 0) {
+            $statusStr = $exitStatus === false ? 'unknown/timeout' : $exitStatus;
+            throw new Exception("Command failed with exit status {$statusStr}: " . $result);
         }
 
         return (string) $result;
