@@ -70,12 +70,16 @@ class SshService
     public function execute(Server $server, string $command): string
     {
         $ssh = $this->connect($server);
+        
+        // Timeout disable for long running commands.
+        $ssh->setTimeout(0);
+        
         $result = $ssh->exec($command);
         
         if ($ssh->getExitStatus() !== 0) {
             throw new Exception("Command failed with exit status {$ssh->getExitStatus()}: " . $result);
         }
 
-        return $result;
+        return (string) $result;
     }
 }

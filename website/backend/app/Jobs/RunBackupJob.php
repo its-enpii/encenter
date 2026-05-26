@@ -95,7 +95,20 @@ class RunBackupJob implements ShouldQueue
                 );
             }
             // 2. Execute on remote server
-            $sshService->execute($server, $dumpCommand);
+            try {
+                $sshService->execute($server, $dumpCommand);
+            } catch (Exception $e) {
+                // Read exact mysql error log if it exists
+                $detailedError = '';
+                try {
+                    $errorLogStr = $sshService->execute($server, "cat " . escapeshellarg($errLog));
+                    if (trim($errorLogStr) !== '') {
+                        $detailedError = " MySQL Error Log: " . trim($errorLogStr);
+                    }
+                } catch (\Throwable $catE) {}
+                
+                throw new Exception($e->getMessage() . $detailedError);
+            }
 
             // 3. Download via SFTP
             $sftp = $sshService->sftp($server);
@@ -106,12 +119,12 @@ class RunBackupJob implements ShouldQueue
             
             // An empty gzip file is 20 bytes. A database dump < 100 bytes is essentially empty/failed.
             if ($fileSize < 100) {
-                $errorLog = '';
+                $errorLogStr = '';
                 try {
-                    $errorLog = $sshService->execute($server, "cat /tmp/dump_err.log");
+                    $errorLogStr = $sshService->execute($server, "cat " . escapeshellarg($errLog));
                 } catch (\Throwable $e) {}
                 
-                throw new Exception("Backup failed resulting in an empty file. MySQL Error: " . trim($errorLog));
+                throw new Exception("Backup failed resulting in an empty file. MySQL Error: " . trim($errorLogStr));
             }
 
             $this->backupJob->update([
