@@ -118,8 +118,7 @@ class SshService
 
         $exitStatus = $ssh->getExitStatus();
         if ($exitStatus !== 0) {
-            $statusStr = $exitStatus === false ? 'unknown/timeout' : (string)$exitStatus;
-            // Read stderr from the command
+            $statusStr = $exitStatus === false ? 'unknown/timeout (SSH connection dropped during stream)' : (string)$exitStatus;
             $stderr = '';
             try {
                 $stderr = (string) $ssh->getStdError();
