@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { DatabaseIcon, CloudIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertCircleIcon } from "@/components/admin/Icons";
+import { DatabaseIcon, CloudIcon, CheckCircleIcon, XCircleIcon, ClockIcon, AlertCircleIcon, BellIcon } from "@/components/admin/Icons";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
 import { apiFetch } from "@/lib/api";
 
@@ -53,6 +53,15 @@ export default function BackupHistoryPage() {
     }, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleResendWebhook = async (id: string) => {
+    try {
+      await apiFetch(`/backups/${id}/resend-webhook`, { method: 'POST' });
+      setRefreshKey(prev => prev + 1);
+    } catch (e: any) {
+      setSelectedError({ open: true, message: 'Failed to resend webhook: ' + (e?.message || 'Unknown error') });
+    }
+  };
 
   const formatSize = (bytes: number) => {
     if (!bytes) return "0 B";
@@ -129,6 +138,17 @@ export default function BackupHistoryPage() {
               onClick={() => window.open(item.gdrive_file_url, '_blank')}
             >
               <CloudIcon className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {(item.status === 'success' || item.status === 'failed') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              title="Resend webhook"
+              className="text-cyan-400 hover:text-cyan-300 px-2"
+              onClick={() => handleResendWebhook(item.id)}
+            >
+              <BellIcon className="h-3.5 w-3.5" />
             </Button>
           )}
           {item.status === 'failed' && (

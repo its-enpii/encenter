@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function () {
         Route::get('backups', [BackupController::class, 'index']);
         Route::post('backups/run', [BackupController::class, 'run'])->middleware('throttle:backup');
         Route::get('backups/{id}', [BackupController::class, 'show']);
+        Route::post('backups/{id}/resend-webhook', [BackupController::class, 'resendWebhook']);
 
         // Phase 4: Webhooks
         Route::apiResource('webhooks', \App\Http\Controllers\Api\V1\WebhookSettingController::class);

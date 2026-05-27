@@ -92,7 +92,7 @@ class BackupController extends Controller
         }
     }
 
-    /**
+     /**
      * Get backup job status.
      */
     public function show($id)
@@ -106,6 +106,53 @@ class BackupController extends Controller
             ]);
         } catch (Exception $e) {
             Log::error("Backup Show Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Resend webhook for a backup job.
+     */
+    public function resendWebhook($id, \App\Services\WebhookService $webhookService)
+    {
+        try {
+            $backupJob = BackupJob::with(['databaseConnection.server'])->findOrFail($id);
+            $dbConn = $backupJob->databaseConnection;
+            $server = $dbConn->server;
+            $user = \App\Models\User::find($backupJob->triggered_by_user ?? $server->user_id);
+
+            if (!$user) {
+                return response()->json(['status' => 'error', 'message' => 'User not found.'], 404);
+            }
+
+            $event = $backupJob->status === 'success' ? 'backup.success' : 'backup.failed';
+            $payload = [
+                'backup_job_id' => $backupJob->id,
+                'server_label' => $server->label,
+                'database_label' => $dbConn->label,
+                'status' => $backupJob->status,
+                'triggered_by' => $backupJob->triggered_by,
+                'duration_seconds' => $backupJob->duration_seconds,
+            ];
+
+            if ($backupJob->status === 'success') {
+                $payload['file_name'] = $backupJob->file_name;
+                $payload['file_size_bytes'] = $backupJob->file_size_bytes;
+                $payload['gdrive_file_url'] = $backupJob->gdrive_file_url;
+            } else {
+                $payload['error_message'] = $backupJob->error_message;
+            }
+
+            $webhookService->send($event, $payload, $user);
+
+            $backupJob->update([
+                'webhook_sent' => \Illuminate\Support\Facades\DB::raw('true'),
+                'webhook_sent_at' => now(),
+            ]);
+
+            return response()->json(['status' => 'success', 'message' => 'Webhook resent successfully.']);
+        } catch (Exception $e) {
+            Log::error("Resend Webhook Error: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
