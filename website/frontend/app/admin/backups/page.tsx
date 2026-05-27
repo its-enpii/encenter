@@ -80,15 +80,17 @@ export default function BackupHistoryPage() {
     { 
       header: "Status", 
       accessor: (item: BackupJob) => {
-        const variants: any = {
+        const variants: Record<string, "success" | "error" | "warning" | "neutral"> = {
           success: "success",
           failed: "error",
           running: "warning",
           pending: "neutral"
         };
+        const stat = (item.status || "").toLowerCase().trim();
+        const variant = variants[stat] || "neutral";
         return (
-          <Badge variant={variants[item.status] || "neutral"}>
-            {item.status.toUpperCase()}
+          <Badge variant={variant}>
+            {stat.toUpperCase()}
           </Badge>
         );
       }

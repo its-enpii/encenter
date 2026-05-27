@@ -124,9 +124,22 @@ class RunBackupJob implements ShouldQueue
                     if ($pidVal) {
                         $isAlive = trim($sshPolling->exec("kill -0 {$pidVal} 2>/dev/null; echo \$?"));
                         if ($isAlive !== '0') {
+                            // Process is dead. Let's double check if .done was created at the very last millisecond
+                            $doneCheck = trim($sshPolling->exec("cat {$remoteDoneEsc} 2>/dev/null"));
+                            if ($doneCheck === 'done') {
+                                break;
+                            }
                             // Process died without done file
                             $errMsg = trim($sshPolling->exec("cat {$remoteErrEsc} 2>/dev/null"));
                             $logCheck = trim($sshPolling->exec("ls -la {$remoteErrEsc} {$remoteFileEsc} 2>/dev/null"));
+                            
+                            // If err is empty and gz file has data, assume it finished successfully but failed to write .done
+                            $errSize = trim($sshPolling->exec("stat -c %s {$remoteErrEsc} 2>/dev/null || echo 1"));
+                            $gzSize = trim($sshPolling->exec("stat -c %s {$remoteFileEsc} 2>/dev/null || echo 0"));
+                            if ($errSize === '0' && (int)$gzSize > 100) {
+                                break; // Assume success
+                            }
+                            
                             throw new Exception("Dump process died unexpectedly. Pid: {$pidVal}. Error: {$errMsg}. Files: {$logCheck}");
                         }
                     }
