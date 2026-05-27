@@ -97,7 +97,7 @@ class RunBackupJob implements ShouldQueue
             // Encode the inner command in base64 to avoid quote escaping issues
             $innerCmd = "{$dumpCmd} 2>{$remoteErr} | gzip > {$remoteFile} && echo done > {$remoteDone}";
             $encodedCmd = base64_encode($innerCmd);
-            $bgCmd = "nohup bash -c \"\$(echo {$encodedCmd} | base64 -d)\" > /dev/null 2>&1 & echo \$! > {$remotePid}";
+            $bgCmd = "nohup bash -c \"\$(echo {$encodedCmd} | base64 -d)\" > {$remoteErr} 2>&1 & echo \$! > {$remotePid}";
             $sshService->executeBackground($server, $bgCmd);
 
             // Keep a single SSH connection for polling to avoid connection drops
@@ -126,7 +126,8 @@ class RunBackupJob implements ShouldQueue
                         if ($isAlive !== '0') {
                             // Process died without done file
                             $errMsg = trim($sshPolling->exec("cat {$remoteErrEsc} 2>/dev/null"));
-                            throw new Exception("Dump process died unexpectedly. Error: " . $errMsg);
+                            $logCheck = trim($sshPolling->exec("ls -la {$remoteErrEsc} {$remoteFileEsc} 2>/dev/null"));
+                            throw new Exception("Dump process died unexpectedly. Pid: {$pidVal}. Error: {$errMsg}. Files: {$logCheck}");
                         }
                     }
                 } catch (Exception $e) {
@@ -242,7 +243,7 @@ class RunBackupJob implements ShouldQueue
                 'status' => 'failed',
                 'finished_at' => now(),
                 'duration_seconds' => max(1, $duration),
-                'error_message' => $e->getMessage(),
+                'error_message' => "Worker Host: " . gethostname() . " | " . $e->getMessage(),
             ]);
 
             // Cleanup remote

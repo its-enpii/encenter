@@ -82,8 +82,8 @@ export default function BackupHistoryPage() {
       accessor: (item: BackupJob) => {
         const variants: any = {
           success: "success",
-          failed: "danger",
-          running: "neutral",
+          failed: "error",
+          running: "warning",
           pending: "neutral"
         };
         return (
