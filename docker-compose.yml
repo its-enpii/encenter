@@ -53,7 +53,6 @@ services:
     volumes:
       - ./website/frontend:/app
       - frontend-node-modules:/app/node_modules
-      - frontend-next-cache:/app/.next
     environment:
       - NODE_ENV=${NODE_ENV:-development}
       - WATCHPACK_POLLING=${WATCHPACK_POLLING:-true}
@@ -166,7 +165,6 @@ services:
 volumes:
   backend-vendor:
   frontend-node-modules:
-  frontend-next-cache:
 
 networks:
   agent-network:
