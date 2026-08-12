@@ -318,7 +318,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
         onHandshake={() => handleHandshake(currentServer)}
       />
 
-      {/* MAIN VIEW CONTENT AREA - Keeps components mounted to preserve state across tab navigation */}
+      {/* MAIN VIEW CONTENT AREA - Unique key per server to force fresh terminal instances on switch */}
       <main className="flex-1 min-w-0 h-full overflow-y-auto p-6 md:p-8 custom-scrollbar">
         <div className={activeTab === "dashboard" ? "block" : "hidden"}>
           <ServerDashboardView
@@ -331,7 +331,11 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
         </div>
 
         <div className={activeTab === "terminal" ? "block h-full" : "hidden"}>
-          <SshTerminalView currentServer={currentServer} activeTab={activeTab} />
+          <SshTerminalView
+            key={currentServer?.id || "no-server"}
+            currentServer={currentServer}
+            activeTab={activeTab}
+          />
         </div>
 
         <div className={activeTab === "sftp" ? "block" : "hidden"}>
@@ -374,7 +378,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
 
 export default function ConnectPage(props: ConnectPageProps) {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400 font-mono">Loading Console...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-[10px] text-slate-400 font-mono">Loading Console...</div>}>
       <ConnectPageContent {...props} />
     </Suspense>
   );
