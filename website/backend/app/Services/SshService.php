@@ -70,32 +70,35 @@ class SshService
     public function execute(Server $server, string $command): string
     {
         $ssh = $this->connect($server);
-        $ssh->setTimeout(7200);
+        $ssh->setTimeout(120);
         if (method_exists($ssh, 'setKeepAlive')) {
             $ssh->setKeepAlive(10);
         }
         
-        $result = $ssh->exec($command);
-        $exitStatus = $ssh->getExitStatus();
-        
-        if ($exitStatus !== 0) {
-            $statusStr = $exitStatus === false ? 'unknown/timeout/dropped' : (string)$exitStatus;
-            \Illuminate\Support\Facades\Log::error("SSH Exec Failed", ['command' => $command, 'exit' => $statusStr, 'output' => $result]);
-            throw new Exception("SSH Command failed [{$statusStr}] cmd: {$command}");
+        $stdout = $ssh->exec($command);
+        $stderr = $ssh->getStdError();
+
+        $output = '';
+        if ($stdout !== false && $stdout !== '') {
+            $output .= (string)$stdout;
+        }
+        if ($stderr !== false && $stderr !== '') {
+            if ($output !== '') {
+                $output .= "\n";
+            }
+            $output .= (string)$stderr;
         }
 
-        return (string) $result;
+        return $output;
     }
 
     /**
      * Fire-and-forget: send command and disconnect without waiting for exit.
-     * Use for starting background processes (nohup) where exit status is irrelevant.
      */
     public function executeBackground(Server $server, string $command): void
     {
         $ssh = $this->connect($server);
         $ssh->setTimeout(30);
         $ssh->exec($command);
-        // Do not check exit status - background process may outlive the shell
     }
 }
