@@ -45,25 +45,58 @@ export function SftpFileManagerView({
   onSelectUploadFile,
   onConfirmUpload,
 }: SftpFileManagerViewProps) {
+
+  // Calculate parent directory path
+  const getParentPath = () => {
+    if (!sftpPath || sftpPath === "/") return "/";
+    const cleanPath = sftpPath.replace(/\/$/, "");
+    const lastSlash = cleanPath.lastIndexOf("/");
+    return lastSlash <= 0 ? "/" : cleanPath.substring(0, lastSlash);
+  };
+
+  const isAtRoot = !sftpPath || sftpPath === "/";
+  const parentPath = getParentPath();
+
   return (
     <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-xl">
       {/* SFTP Controls Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <FolderIcon className="h-5 w-5 text-emerald-400 shrink-0" />
+          {/* Go to Parent Directory Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isAtRoot || loadingSftp}
+            onClick={() => onRefreshPath(parentPath)}
+            title={isAtRoot ? "At root directory" : `Go up to ${parentPath}`}
+            className="px-2.5 text-xs shrink-0 gap-1 text-slate-300 hover:text-emerald-400 disabled:opacity-40"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+            <span className="hidden md:inline font-mono">Up</span>
+          </Button>
+
+          <FolderIcon className="h-5 w-5 text-emerald-400 shrink-0 ml-1" />
+
+          {/* Directory Path Input */}
           <Input
             value={sftpPath}
             onChange={(e) => onPathChange(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") onRefreshPath(sftpPath);
             }}
-            className="font-mono text-xs py-1.5"
+            placeholder="/path/to/directory"
+            className="font-mono text-xs py-1.5 flex-1"
           />
+
+          {/* Refresh Button */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => onRefreshPath(sftpPath)}
             isLoading={loadingSftp}
+            title="Refresh directory contents"
             className="px-3 text-xs shrink-0"
           >
             <RefreshIcon className="h-3.5 w-3.5" />
@@ -128,6 +161,28 @@ export function SftpFileManagerView({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 font-mono">
+            {/* Parent Directory Row (..) */}
+            {!isAtRoot && (
+              <tr
+                onClick={() => onRefreshPath(parentPath)}
+                className="hover:bg-slate-800/60 transition-colors cursor-pointer bg-slate-900/30 text-emerald-400 font-bold"
+              >
+                <td className="py-2 px-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                  <span>.. (Up to parent directory)</span>
+                </td>
+                <td className="py-2 px-3 text-slate-500 text-[11px]">parent</td>
+                <td className="py-2 px-3 text-slate-500 text-[11px]">-</td>
+                <td className="py-2 px-3 text-slate-500 text-[11px]">-</td>
+                <td className="py-2 px-3 text-slate-500 text-[11px]">-</td>
+                <td className="py-2 px-3 text-right text-slate-500 text-[11px]">
+                  <span className="text-[10px] font-semibold text-slate-500 hover:text-emerald-400">Go Up</span>
+                </td>
+              </tr>
+            )}
+
             {loadingSftp ? (
               <tr>
                 <td colSpan={6} className="py-8 text-center text-slate-500">
