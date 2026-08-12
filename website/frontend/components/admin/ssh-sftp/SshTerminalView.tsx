@@ -21,20 +21,30 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   const [executing, setExecuting] = useState(false);
   const [currentCwd, setCurrentCwd] = useState("~");
 
-  // Keep ref up to date to avoid stale closures in xterm event listeners
-  useEffect(() => {
-    currentServerRef.current = currentServer;
-    if (xtermInstance.current && currentServer) {
-      xtermInstance.current.writeln(`\r\n\x1b[36m[+] Switched target node to: ${currentServer.label} (${currentServer.host})\x1b[0m`);
-      xtermInstance.current.write(getPrompt(currentServer, currentCwd));
-    }
-  }, [currentServer]);
-
   // Prompt formatting helper
   const getPrompt = (server: Server | null, dir = "~") => {
     const userHost = server ? `${server.username}@${server.host}` : "ssh-terminal";
     return `\r\n\x1b[1;32m${userHost}\x1b[0m:\x1b[1;34m${dir}\x1b[0m$ `;
   };
+
+  // Reset terminal buffer and prompt clean when target server changes
+  useEffect(() => {
+    currentServerRef.current = currentServer;
+    if (xtermInstance.current) {
+      const term = xtermInstance.current;
+      term.clear();
+      inputBuffer.current = "";
+
+      if (currentServer) {
+        term.writeln(`\x1b[1;32m[+] Interactive Session Initialized\x1b[0m`);
+        term.writeln(`\x1b[90mConnected target node: ${currentServer.label} (${currentServer.host})\x1b[0m`);
+        term.write(getPrompt(currentServer, currentCwd));
+      } else {
+        term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m");
+        term.write(getPrompt(null, currentCwd));
+      }
+    }
+  }, [currentServer]);
 
   // Keep terminal instance alive across tab switches
   useEffect(() => {

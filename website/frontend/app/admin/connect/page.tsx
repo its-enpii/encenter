@@ -73,19 +73,35 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
 
   const currentServer = servers.find((s) => s.id === selectedServerId) || (servers.length > 0 ? servers[0] : null);
 
-  const handleHandshake = async () => {
-    if (!currentServer) return;
+  // Auto reset and fetch metrics when switching servers
+  useEffect(() => {
+    if (currentServer) {
+      setDiagOutput(null);
+      setSystemMetrics(null);
+      setHandshakeStatus("CONNECTING");
+      setHandshakeMessage(`Connecting to ${currentServer.label}...`);
+      handleHandshake(currentServer);
+
+      setSftpPath("/");
+      loadSftpFiles(currentServer.id, "/");
+    }
+  }, [selectedServerId]);
+
+  const handleHandshake = async (srv?: Server | null) => {
+    const target = srv || currentServer;
+    if (!target) return;
+
     setHandshakeStatus("CONNECTING");
     setHandshakeMessage("Initiating SSH connection...");
 
     try {
-      const res = await apiFetch(`/servers/${currentServer.id}/test`, { method: "POST" });
+      const res = await apiFetch(`/servers/${target.id}/test`, { method: "POST" });
       const data = await res.json();
 
       if (res.ok) {
         setHandshakeStatus("CONNECTED");
         setHandshakeMessage(data.message || "Handshake established successfully.");
-        fetchMetrics(currentServer.id);
+        fetchMetrics(target.id);
       } else {
         setHandshakeStatus("FAILED");
         setHandshakeMessage(data.message || "Connection refused by target node.");
@@ -126,22 +142,42 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
     }
   };
 
-  const runDiagnostic = async (title: string, cmd: string) => {
-    if (!currentServer) return;
-    setRunningDiag(title);
-    setDiagOutput({ title, output: "Running diagnostic command..." });
+  const loadSftpFiles = async (serverId?: string, path = "/") => {
+    const targetId = serverId || currentServer?.id;
+    if (!targetId) return;
 
+    setLoadingSftp(true);
+    try {
+      const res = await apiFetch(`/servers/${targetId}/sftp/ls?path=${encodeURIComponent(path)}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        setSftpItems(data.items || []);
+        if (data.pwd) setSftpPath(data.pwd);
+      } else {
+        setSftpItems([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setSftpItems([]);
+    } finally {
+      setLoadingSftp(false);
+    }
+  };
+
+  const runDiagnostic = async (cmd: string, title: string) => {
+    if (!currentServer) return;
+    setRunningDiag(cmd);
     try {
       const res = await apiFetch(`/servers/${currentServer.id}/ssh/exec`, {
         method: "POST",
         body: JSON.stringify({ command: cmd }),
       });
       const data = await res.json();
-
       if (res.ok) {
         setDiagOutput({ title, output: data.output || "No output returned." });
       } else {
-        setDiagOutput({ title, output: `Error: ${data.message}` });
+        setDiagOutput({ title, output: `Error: ${data.message || "Failed to execute."}` });
       }
     } catch (err) {
       setDiagOutput({ title, output: "Network error executing diagnostic." });
@@ -150,33 +186,9 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
     }
   };
 
-  const loadSftpFiles = async (path: string) => {
-    if (!currentServer) return;
-    setLoadingSftp(true);
-    try {
-      const res = await apiFetch(`/servers/${currentServer.id}/sftp/ls?path=${encodeURIComponent(path)}`);
-      const data = await res.json();
-
-      if (res.ok) {
-        setSftpItems(data.items || []);
-        setSftpPath(data.path || path);
-      }
-    } catch (err) {
-      console.error("SFTP LS error", err);
-    } finally {
-      setLoadingSftp(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === "sftp" && currentServer) {
-      loadSftpFiles(sftpPath);
-    }
-  }, [activeTab, currentServer]);
-
   const handleOpenSftpItem = (item: SftpItem) => {
     if (item.type === "directory") {
-      loadSftpFiles(item.path);
+      loadSftpFiles(currentServer?.id, item.path);
     } else {
       handleReadFile(item.path);
     }
@@ -189,12 +201,12 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
       const data = await res.json();
 
       if (res.ok) {
-        setEditingFile({ path, content: data.content });
+        setEditingFile({ path, content: data.content || "" });
       } else {
         alert(data.message || "Failed to read file.");
       }
     } catch (err) {
-      alert("Error loading file content.");
+      alert("Error reading file content.");
     }
   };
 
@@ -209,8 +221,8 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
       const data = await res.json();
 
       if (res.ok) {
-        alert("File saved successfully!");
         setEditingFile(null);
+        loadSftpFiles(currentServer.id, sftpPath);
       } else {
         alert(data.message || "Failed to save file.");
       }
@@ -234,7 +246,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
       if (res.ok) {
         setShowNewFolderModal(false);
         setNewFolderName("");
-        loadSftpFiles(sftpPath);
+        loadSftpFiles(currentServer.id, sftpPath);
       } else {
         alert(data.message || "Failed to create directory.");
       }
@@ -253,7 +265,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
       const data = await res.json();
 
       if (res.ok) {
-        loadSftpFiles(sftpPath);
+        loadSftpFiles(currentServer.id, sftpPath);
       } else {
         alert(data.message || "Failed to delete item.");
       }
@@ -279,7 +291,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
 
       if (res.ok) {
         setUploadFileObj(null);
-        loadSftpFiles(sftpPath);
+        loadSftpFiles(currentServer.id, sftpPath);
       } else {
         alert(data.message || "Upload failed.");
       }
@@ -303,7 +315,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
         currentServer={currentServer}
         handshakeStatus={handshakeStatus}
         handshakeMessage={handshakeMessage}
-        onHandshake={handleHandshake}
+        onHandshake={() => handleHandshake(currentServer)}
       />
 
       {/* MAIN VIEW CONTENT AREA - Keeps components mounted to preserve state across tab navigation */}
@@ -330,7 +342,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
             uploadFileObj={uploadFileObj}
             uploading={uploading}
             onPathChange={(p) => setSftpPath(p)}
-            onRefreshPath={(p) => loadSftpFiles(p)}
+            onRefreshPath={(p) => loadSftpFiles(currentServer?.id, p)}
             onOpenItem={handleOpenSftpItem}
             onReadFile={handleReadFile}
             onDeleteItem={handleDeleteSftpItem}
