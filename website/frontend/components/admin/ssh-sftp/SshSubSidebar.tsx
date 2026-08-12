@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Server } from "@/types/admin";
 import { TerminalIcon, RefreshIcon, LayoutDashboardIcon, FolderIcon } from "@/components/admin/Icons";
 import { Button, Badge } from "@/components/admin/ui/Core";
@@ -33,17 +33,37 @@ export function SshSubSidebar({
   handshakeMessage,
   onHandshake,
 }: SshSubSidebarProps) {
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+
   const serverOptions = servers.map((srv) => ({
     label: srv.label + " (" + srv.host + ")",
     value: srv.id,
   }));
 
   return (
-    <aside className="w-64 lg:w-72 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 h-full overflow-y-auto custom-scrollbar">
-      {/* Header & Target Server Selector */}
-      <div className="p-4 border-b border-slate-800/80 bg-slate-900/40 space-y-3">
-        <div className="flex items-center gap-2 mb-1">
+    <aside
+      className={`bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 h-full overflow-y-auto custom-scrollbar transition-all duration-300 ${
+        isMobileExpanded ? "w-64 md:w-64 lg:w-72" : "w-14 md:w-64 lg:w-72"
+      }`}
+    >
+      {/* Mobile Toggle Button Header */}
+      <div className="p-3 border-b border-slate-800/80 bg-slate-900/40 flex items-center justify-between md:hidden">
+        <button
+          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors"
+          title="Toggle Sub Sidebar"
+        >
           <TerminalIcon className="h-5 w-5 text-emerald-400" />
+        </button>
+        {isMobileExpanded && (
+          <span className="text-xs font-bold text-slate-200 truncate">Console Menu</span>
+        )}
+      </div>
+
+      {/* Header & Target Server Selector */}
+      <div className={`p-4 border-b border-slate-800/80 bg-slate-900/40 space-y-3 ${isMobileExpanded ? "block" : "hidden md:block"}`}>
+        <div className="flex items-center gap-2 mb-1">
+          <TerminalIcon className="h-5 w-5 text-emerald-400 shrink-0" />
           <h2 className="font-bold text-slate-100 text-sm tracking-wide">SSH & SFTP Console</h2>
         </div>
 
@@ -111,45 +131,57 @@ export function SshSubSidebar({
       </div>
 
       {/* Console Views Sub-Navigation */}
-      <nav className="p-3 space-y-1.5 flex-1">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-2 pb-1">
+      <nav className="p-2 md:p-3 space-y-1.5 flex-1">
+        <p className={`text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 pt-2 pb-1 ${isMobileExpanded ? "block" : "hidden md:block"}`}>
           Console Views
         </p>
 
         <button
-          onClick={() => onChangeTab("dashboard")}
+          onClick={() => {
+            onChangeTab("dashboard");
+            setIsMobileExpanded(false);
+          }}
+          title="Server Dashboard"
           className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all " + (
             activeTab === "dashboard"
               ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-md font-bold"
               : "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 border border-transparent"
           )}
         >
-          <LayoutDashboardIcon className="h-4 w-4" />
-          <span>Server Dashboard</span>
+          <LayoutDashboardIcon className="h-4 w-4 shrink-0" />
+          <span className={isMobileExpanded ? "block" : "hidden md:block"}>Server Dashboard</span>
         </button>
 
         <button
-          onClick={() => onChangeTab("terminal")}
+          onClick={() => {
+            onChangeTab("terminal");
+            setIsMobileExpanded(false);
+          }}
+          title="SSH Terminal Console"
           className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all " + (
             activeTab === "terminal"
               ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-md font-bold"
               : "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 border border-transparent"
           )}
         >
-          <TerminalIcon className="h-4 w-4" />
-          <span>SSH Terminal Console</span>
+          <TerminalIcon className="h-4 w-4 shrink-0" />
+          <span className={isMobileExpanded ? "block" : "hidden md:block"}>SSH Terminal Console</span>
         </button>
 
         <button
-          onClick={() => onChangeTab("sftp")}
+          onClick={() => {
+            onChangeTab("sftp");
+            setIsMobileExpanded(false);
+          }}
+          title="SFTP File Manager"
           className={"w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all " + (
             activeTab === "sftp"
               ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-md font-bold"
               : "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 border border-transparent"
           )}
         >
-          <FolderIcon className="h-4 w-4" />
-          <span>SFTP File Manager</span>
+          <FolderIcon className="h-4 w-4 shrink-0" />
+          <span className={isMobileExpanded ? "block" : "hidden md:block"}>SFTP File Manager</span>
         </button>
       </nav>
     </aside>
