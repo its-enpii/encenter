@@ -34,7 +34,6 @@ class SshTerminalController extends Controller
         $cmd = trim($validated['command']);
         $targetCwd = !empty($validated['cwd']) ? trim($validated['cwd']) : '~';
 
-        // Do not wrap ~ in quotes so bash expands home directory correctly
         if ($targetCwd === '~' || $targetCwd === '' || str_contains($targetCwd, "\n")) {
             $cdCmd = "cd ~";
         } else {
@@ -86,19 +85,32 @@ class SshTerminalController extends Controller
     public function listFiles(Request $request, string $id)
     {
         $server = Server::where('user_id', Auth::id())->findOrFail($id);
-        $path = $request->get('path', '/');
+        $targetPath = $request->get('path', '/');
+        if (empty($targetPath)) {
+            $targetPath = '/';
+        }
 
         try {
             $sftp = $this->sshService->sftp($server);
-            $rawList = $sftp->rawlist($path);
+
+            // Change directory to target path first to resolve canonical PWD
+            $chdirSuccess = $sftp->chdir($targetPath);
+            $canonicalPwd = $sftp->pwd();
+
+            if (!$canonicalPwd) {
+                $canonicalPwd = $targetPath;
+            }
+
+            $rawList = $sftp->rawlist($canonicalPwd);
+            if ($rawList === false) {
+                $rawList = $sftp->rawlist($targetPath);
+            }
 
             if ($rawList === false) {
-                throw new Exception("Unable to list path: {$path}");
+                throw new Exception("Unable to list path: {$targetPath}");
             }
 
             $items = [];
-            $pwd = $sftp->pwd();
-
             foreach ($rawList as $filename => $info) {
                 if ($filename === '.' || $filename === '..') {
                     continue;
@@ -109,9 +121,14 @@ class SshTerminalController extends Controller
                     $isDir = true;
                 }
 
+                $fullItemPath = rtrim($canonicalPwd, '/') . '/' . ltrim($filename, '/');
+                if ($canonicalPwd === '/') {
+                    $fullItemPath = '/' . ltrim($filename, '/');
+                }
+
                 $items[] = [
                     'name' => $filename,
-                    'path' => rtrim($path, '/') . '/' . $filename,
+                    'path' => $fullItemPath,
                     'type' => $isDir ? 'directory' : 'file',
                     'size' => $info['size'] ?? 0,
                     'mtime' => isset($info['mtime']) ? date('Y-m-d H:i:s', $info['mtime']) : null,
@@ -128,8 +145,8 @@ class SshTerminalController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'path' => $path,
-                'pwd' => $pwd,
+                'path' => $canonicalPwd,
+                'pwd' => $canonicalPwd,
                 'items' => $items,
             ]);
         } catch (Exception $e) {
