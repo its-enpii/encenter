@@ -6,25 +6,20 @@ import {
   Input,
   Textarea,
   Switcher,
-  SmartSelect,
 } from "@/components/admin/ui/Form";
 import { Button } from "@/components/admin/ui/Core";
 import { ShieldIcon, ServerIcon, ArrowLeftIcon } from "@/components/admin/Icons";
 import { apiFetch } from "@/lib/api";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
 import Link from "next/link";
-import { ServerGroup } from "@/types/admin";
-
 export default function NewServerPage() {
   const router = useRouter();
-  const [groups, setGroups] = useState<ServerGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [errorDialog, setErrorDialog] = useState({ open: false, title: "", message: "" });
   const [formData, setFormData] = useState({
     label: "",
     host: "",
     port: "22",
-    group_id: "",
     username: "",
     auth_type: "password" as "password" | "private_key",
     password: "",
@@ -33,15 +28,6 @@ export default function NewServerPage() {
     notes: "",
     is_active: true,
   });
-
-  useEffect(() => {
-    // Fetch server groups for the dropdown
-    apiFetch("/server-groups")
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.data) setGroups(res.data);
-      });
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,14 +137,6 @@ export default function NewServerPage() {
               }
             />
           </div>
-
-          <SmartSelect
-            label="Server Group"
-            options={groups.map((g) => ({ label: g.name, value: g.id }))}
-            value={formData.group_id}
-            onChange={(val) => setFormData({ ...formData, group_id: val })}
-            placeholder="Select a group..."
-          />
 
           <Textarea
             label="Internal Notes"

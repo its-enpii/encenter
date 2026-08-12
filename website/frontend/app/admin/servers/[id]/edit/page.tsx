@@ -6,21 +6,17 @@ import {
   Input,
   Textarea,
   Switcher,
-  SmartSelect,
 } from "@/components/admin/ui/Form";
 import { Button } from "@/components/admin/ui/Core";
 import { ShieldIcon, ServerIcon, ArrowLeftIcon, DatabaseIcon } from "@/components/admin/Icons";
 import { apiFetch } from "@/lib/api";
 import { AlertDialog } from "@/components/admin/ui/Dialog";
 import Link from "next/link";
-import { ServerGroup } from "@/types/admin";
-
 export default function EditServerPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
   
-  const [groups, setGroups] = useState<ServerGroup[]>([]);
   const [dbConnections, setDbConnections] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -29,7 +25,6 @@ export default function EditServerPage() {
     label: "",
     host: "",
     port: "22",
-    group_id: "",
     username: "",
     auth_type: "password" as "password" | "private_key",
     password: "",
@@ -45,12 +40,7 @@ export default function EditServerPage() {
     const loadData = async () => {
       setFetching(true);
       try {
-        // 1. Fetch server groups first
-        const groupsRes = await apiFetch("/server-groups");
-        const groupsData = await groupsRes.json();
-        if (groupsData.data) setGroups(groupsData.data);
-
-        // 2. Then fetch server data
+        // Fetch server data
         const serverRes = await apiFetch(`/servers/${id}`);
         const serverData = await serverRes.json();
         
@@ -60,7 +50,6 @@ export default function EditServerPage() {
             label: s.label,
             host: s.host,
             port: String(s.port),
-            group_id: s.group_id || "",
             username: s.username,
             auth_type: s.auth_type,
             password: "",
@@ -201,13 +190,6 @@ export default function EditServerPage() {
               onChange={(e) => setFormData({ ...formData, port: e.target.value })}
             />
           </div>
-
-          <SmartSelect
-            label="Server Group"
-            options={groups.map((g) => ({ label: g.name, value: g.id }))}
-            value={formData.group_id}
-            onChange={(val) => setFormData({ ...formData, group_id: val })}
-          />
 
           <Textarea
             label="Internal Notes"

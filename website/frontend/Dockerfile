@@ -4,10 +4,9 @@ WORKDIR /app
 
 RUN npm install -g pnpm
 
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* .npmrc* ./
 
-RUN pnpm config set node-linker hoisted
-RUN pnpm install
+RUN pnpm install --ignore-scripts --no-frozen-lockfile
 
 COPY . .
 

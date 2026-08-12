@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import React, { useState } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
 import { Badge, Button } from "@/components/admin/ui/Core";
-import { PlusIcon, ServerIcon, PlayIcon, EyeIcon, PencilIcon, TrashIcon } from "@/components/admin/Icons";
+import { PlusIcon, ServerIcon, PlayIcon, EyeIcon, PencilIcon, TrashIcon, TerminalIcon } from "@/components/admin/Icons";
 import { Server } from "@/types/admin";
 import { ConfirmDialog, AlertDialog } from "@/components/admin/ui/Dialog";
 import { CredentialModal } from "@/components/admin/ui/CredentialModal";
@@ -128,7 +128,12 @@ export default function ServersPage() {
           <div className="h-8 w-8 rounded bg-slate-800 flex items-center justify-center text-slate-500 group-hover:text-emerald-400 transition-colors">
             <ServerIcon className="h-4 w-4" />
           </div>
-          <span className="font-bold text-slate-200">{item.label}</span>
+          <div className="flex flex-col">
+            <Link href={`/admin/servers/${item.id}`} className="font-bold text-slate-200 hover:text-emerald-400 transition-colors text-sm">
+              {item.label}
+            </Link>
+            <span className="text-[11px] text-slate-500 font-mono">{item.username}@{item.host}:{item.port}</span>
+          </div>
         </div>
       ),
     },
@@ -144,17 +149,6 @@ export default function ServersPage() {
           {item.is_active ? "Online" : "Offline"}
         </Badge>
       ),
-    },
-    {
-      header: "Group",
-      accessor: (item: Server) =>
-        item.group ? (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold border border-slate-700 bg-slate-800 text-slate-400">
-            {item.group.name}
-          </span>
-        ) : (
-          <span className="text-slate-600 italic text-[10px]">None</span>
-        ),
     },
     {
       header: "Last Sync",
@@ -189,6 +183,12 @@ export default function ServersPage() {
           >
             <EyeIcon className="h-3.5 w-3.5" />
           </Button>
+          <Link href={`/admin/servers/${item.id}`}>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10 px-3">
+              <TerminalIcon className="h-3.5 w-3.5" />
+              Control Panel
+            </Button>
+          </Link>
           <Link href={`/admin/servers/${item.id}/edit`}>
             <Button variant="ghost" size="sm" title="Edit" className="px-2">
               <PencilIcon className="h-3.5 w-3.5" />
@@ -236,9 +236,9 @@ export default function ServersPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Server Fleet</h1>
+          <h1 className="text-2xl font-bold text-white">Manajemen Server</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Manage your remote infrastructure and SSH credentials.
+            Kelola seluruh node server & buka Control Panel (cPanel / aaPanel) untuk masing-masing server.
           </p>
         </div>
         <Link href="/admin/servers/new">

@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\StorageController;
 use App\Http\Controllers\Api\V1\BackupController;
+use App\Http\Controllers\Api\V1\SshTerminalController;
 
 Route::prefix('v1')->group(function () {
     // Public routes
@@ -15,9 +16,16 @@ Route::prefix('v1')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me'])->name('auth.me');
         Route::put('/auth/profile', [AuthController::class, 'updateProfile'])->name('auth.profile');
 
-        // Phase 2: Credential Vault
-        Route::apiResource('server-groups', \App\Http\Controllers\Api\V1\ServerGroupController::class);
         
+        // SSH & SFTP Terminal Gateway
+        Route::post('servers/{id}/ssh/exec', [SshTerminalController::class, 'execute']);
+        Route::get('servers/{id}/sftp/ls', [SshTerminalController::class, 'listFiles']);
+        Route::get('servers/{id}/sftp/read', [SshTerminalController::class, 'readFile']);
+        Route::post('servers/{id}/sftp/write', [SshTerminalController::class, 'writeFile']);
+        Route::post('servers/{id}/sftp/mkdir', [SshTerminalController::class, 'makeDirectory']);
+        Route::delete('servers/{id}/sftp/delete', [SshTerminalController::class, 'deleteItem']);
+        Route::post('servers/{id}/sftp/upload', [SshTerminalController::class, 'uploadFile']);
+        // Phase 2: Credential Vault
         Route::apiResource('servers', \App\Http\Controllers\Api\V1\ServerController::class);
         Route::post('servers/{id}/test', [\App\Http\Controllers\Api\V1\ServerController::class, 'testConnection']);
         Route::get('servers/{id}/credentials', [\App\Http\Controllers\Api\V1\ServerController::class, 'credentials']);

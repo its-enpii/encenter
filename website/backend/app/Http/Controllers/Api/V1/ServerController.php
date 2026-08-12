@@ -20,15 +20,12 @@ class ServerController extends Controller
     {
         $query = Server::where('user_id', Auth::id());
 
-        if ($request->has('group_id')) {
-            $query->where('group_id', $request->group_id);
-        }
 
         if ($request->has('search')) {
             $query->where('label', 'like', '%' . $request->search . '%');
         }
 
-        $query = $query->with('group')->orderBy('label');
+        $query = $query->orderBy('label');
 
         if ($request->get('paginate') === 'false') {
             return response()->json($query->get());
@@ -43,7 +40,6 @@ class ServerController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'group_id' => 'nullable|exists:server_groups,id',
             'label' => 'required|string|max:100',
             'host' => 'required|string|max:255',
             'port' => 'nullable|integer',
@@ -57,7 +53,6 @@ class ServerController extends Controller
 
         $server = Server::create([
             'user_id' => Auth::id(),
-            'group_id' => $validated['group_id'] ?? null,
             'label' => $validated['label'],
             'host' => $validated['host'],
             'port' => $validated['port'] ?? 22,
@@ -84,7 +79,7 @@ class ServerController extends Controller
     public function show(string $id)
     {
         $server = Server::where('user_id', Auth::id())
-            ->with(['group', 'databaseConnections'])
+            ->with('databaseConnections')
             ->findOrFail($id);
 
         return response()->json([
@@ -134,7 +129,6 @@ class ServerController extends Controller
         $server = Server::where('user_id', Auth::id())->findOrFail($id);
 
         $validated = $request->validate([
-            'group_id' => 'nullable|exists:server_groups,id',
             'label' => 'sometimes|required|string|max:100',
             'host' => 'sometimes|required|string|max:255',
             'port' => 'nullable|integer',

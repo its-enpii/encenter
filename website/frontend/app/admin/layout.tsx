@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Sidebar } from "@/components/admin/Sidebar";
 import { Header } from "@/components/admin/Header";
 import { useAuth } from "@/lib/auth-context";
@@ -13,7 +13,11 @@ export default function AdminLayout({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { loading, isAuthenticated } = useAuth();
+
+  const isFullBleed = pathname.startsWith("/admin/connect") || 
+    (pathname.startsWith("/admin/servers/") && !pathname.endsWith("/edit") && !pathname.endsWith("/new"));
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -35,19 +39,25 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-slate-950 font-sans text-slate-200">
+    <div className="flex h-screen bg-slate-950 font-sans text-slate-200 overflow-hidden">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      {/* Main Content Area */}
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <Header onMenuClick={() => setIsSidebarOpen(true)} />
 
         {/* Page Body */}
-        <main className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/50 via-slate-950 to-slate-950 p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
+        {isFullBleed ? (
+          <main className="flex-1 flex overflow-hidden bg-slate-950 min-h-0">
             {children}
-          </div>
-        </main>
+          </main>
+        ) : (
+          <main className="flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/50 via-slate-950 to-slate-950 p-4 md:p-8 min-h-0">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </main>
+        )}
       </div>
     </div>
   );

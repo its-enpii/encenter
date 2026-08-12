@@ -1,15 +1,6 @@
-export interface ServerGroup {
-  id: string;
-  name: string;
-  description: string | null;
-  color: string;
-  servers_count?: number;
-}
-
 export interface Server {
   id: string;
   user_id: string;
-  group_id: string | null;
   label: string;
   host: string;
   port: number;
@@ -20,7 +11,6 @@ export interface Server {
   last_connected: string | null;
   created_at: string;
   updated_at: string;
-  group?: ServerGroup;
 }
 
 export interface DatabaseConnection {
