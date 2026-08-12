@@ -19,11 +19,11 @@ jobs:
             cd /home/enpii/studio/encenter
             git pull origin main
             docker network inspect web-network >/dev/null 2>&1 || docker network create web-network
-            docker compose up -d --build
+            docker compose down encenter-frontend
+            docker volume rm -f encenter_frontend-next-cache encenter_frontend-node-modules || true
+            docker compose build --no-cache encenter-frontend
+            docker compose up -d --force-recreate
             docker compose restart envault-nginx
-            # Bind-mount can leave a stale bootstrap/cache from previous builds
-            # (e.g. referencing dev-only providers like Laravel\Pail). Wipe the
-            # cache and let artisan rebuild against the production vendor.
             docker compose exec -T envault-backend rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
             docker compose exec -T envault-backend php artisan package:discover --ansi
             docker compose exec -T envault-backend php artisan config:clear

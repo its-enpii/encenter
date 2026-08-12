@@ -20,7 +20,7 @@ class SshTerminalController extends Controller
     }
 
     /**
-     * Execute command via SSH (Terminal)
+     * Execute command via SSH (Terminal) and track resulting CWD
      */
     public function execute(Request $request, string $id)
     {
@@ -32,21 +32,35 @@ class SshTerminalController extends Controller
         ]);
 
         $cmd = $validated['command'];
-        if (!empty($validated['cwd'])) {
-            $cmd = "cd " . escapeshellarg($validated['cwd']) . " && " . $cmd;
-        }
+        $targetCwd = !empty($validated['cwd']) ? $validated['cwd'] : '~';
+
+        $delimiter = "__ENV_PWD__:";
+        // Chain command execution and retrieve updated PWD
+        $fullCmd = "cd " . escapeshellarg($targetCwd) . " && " . $cmd . "; echo ''; echo '{$delimiter}'\$(pwd)";
 
         try {
-            $output = $this->sshService->execute($server, $cmd);
+            $rawOutput = $this->sshService->execute($server, $fullCmd);
+
+            $newCwd = $targetCwd;
+            $cleanOutput = $rawOutput;
+
+            if (str_contains($rawOutput, $delimiter)) {
+                $parts = explode($delimiter, $rawOutput);
+                $newCwd = trim(end($parts));
+                array_pop($parts);
+                $cleanOutput = implode($delimiter, $parts);
+            }
 
             ActivityLog::log('SSH_EXEC', 'SERVER', $server->id, [
                 'label' => $server->label,
                 'command' => $validated['command'],
+                'cwd' => $newCwd,
             ]);
 
             return response()->json([
                 'status' => 'success',
-                'output' => $output,
+                'output' => rtrim($cleanOutput),
+                'cwd' => $newCwd ?: $targetCwd,
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -81,7 +95,6 @@ class SshTerminalController extends Controller
                 }
 
                 $isDir = ($info['type'] ?? 0) === 2 || ($info['type'] ?? 0) === NET_SFTP_TYPE_DIRECTORY;
-                // Also check mode bits if type isn't explicit
                 if (isset($info['permissions']) && (($info['permissions'] & 0040000) === 0040000)) {
                     $isDir = true;
                 }
@@ -96,7 +109,6 @@ class SshTerminalController extends Controller
                 ];
             }
 
-            // Sort directories first, then files alphabetically
             usort($items, function ($a, $b) {
                 if ($a['type'] === $b['type']) {
                     return strcasecmp($a['name'], $b['name']);
@@ -133,9 +145,8 @@ class SshTerminalController extends Controller
         try {
             $sftp = $this->sshService->sftp($server);
             
-            // Check file size to avoid loading huge binaries into memory
             $size = $sftp->filesize($path);
-            if ($size > 5 * 1024 * 1024) { // 5MB max for in-app editor
+            if ($size > 5 * 1024 * 1024) {
                 return response()->json(['status' => 'error', 'message' => 'File size exceeds 5MB limit for in-app editor.'], 400);
             }
 
@@ -147,7 +158,6 @@ class SshTerminalController extends Controller
             return response()->json([
                 'status' => 'success',
                 'path' => $path,
-                'size' => $size,
                 'content' => $content,
             ]);
         } catch (Exception $e) {
@@ -243,7 +253,7 @@ class SshTerminalController extends Controller
             $sftp = $this->sshService->sftp($server);
             
             if ($validated['type'] === 'directory') {
-                $success = $sftp->rmdir($validated['path'], true); // recursive
+                $success = $sftp->rmdir($validated['path'], true);
             } else {
                 $success = $sftp->delete($validated['path']);
             }
@@ -277,7 +287,7 @@ class SshTerminalController extends Controller
         $server = Server::where('user_id', Auth::id())->findOrFail($id);
 
         $request->validate([
-            'file' => 'required|file|max:51200', // 50MB max
+            'file' => 'required|file|max:51200',
             'target_dir' => 'required|string',
         ]);
 

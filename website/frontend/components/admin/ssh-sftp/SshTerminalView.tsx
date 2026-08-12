@@ -16,6 +16,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   const fitAddonInstance = useRef<any>(null);
   const inputBuffer = useRef<string>("");
   const currentServerRef = useRef<Server | null>(currentServer);
+  const currentCwdRef = useRef<string>("~");
   const isExecutingRef = useRef<boolean>(false);
 
   const [executing, setExecuting] = useState(false);
@@ -30,6 +31,9 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   // Reset terminal buffer and prompt clean when target server changes
   useEffect(() => {
     currentServerRef.current = currentServer;
+    currentCwdRef.current = "~";
+    setCurrentCwd("~");
+
     if (xtermInstance.current) {
       const term = xtermInstance.current;
       term.clear();
@@ -38,10 +42,10 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
       if (currentServer) {
         term.writeln(`\x1b[1;32m[+] Interactive Session Initialized\x1b[0m`);
         term.writeln(`\x1b[90mConnected target node: ${currentServer.label} (${currentServer.host})\x1b[0m`);
-        term.write(getPrompt(currentServer, currentCwd));
+        term.write(getPrompt(currentServer, "~"));
       } else {
         term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m");
-        term.write(getPrompt(null, currentCwd));
+        term.write(getPrompt(null, "~"));
       }
     }
   }, [currentServer]);
@@ -109,7 +113,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
             (server ? `${server.label} (${server.host})` : "None - Select a server from sidebar") +
             "\x1b[0m"
         );
-        term.write(getPrompt(server, "~"));
+        term.write(getPrompt(server, currentCwdRef.current));
 
         // Key handler with ref checking
         term.onData(async (data: string) => {
@@ -126,19 +130,19 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
             if (cmd) {
               if (cmd === "clear") {
                 term.clear();
-                term.write(getPrompt(activeServer, currentCwd));
+                term.write(getPrompt(activeServer, currentCwdRef.current));
                 return;
               }
 
               if (!activeServer) {
                 term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m");
-                term.write(getPrompt(null, currentCwd));
+                term.write(getPrompt(null, currentCwdRef.current));
                 return;
               }
 
               await runRemoteCommand(activeServer, cmd);
             } else {
-              term.write(getPrompt(activeServer, currentCwd));
+              term.write(getPrompt(activeServer, currentCwdRef.current));
             }
           }
           // Backspace key
@@ -193,18 +197,19 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
     }
   }, [activeTab]);
 
-  // Execute Command via Backend SSH Service and output to Xterm
+  // Execute Command via Backend SSH Service and output to Xterm with CWD tracking
   const runRemoteCommand = async (server: Server, cmd: string) => {
     if (!xtermInstance.current) return;
     setExecuting(true);
     isExecutingRef.current = true;
 
     const term = xtermInstance.current;
+    const activeCwd = currentCwdRef.current;
 
     try {
       const res = await apiFetch(`/servers/${server.id}/ssh/exec`, {
         method: "POST",
-        body: JSON.stringify({ command: cmd }),
+        body: JSON.stringify({ command: cmd, cwd: activeCwd }),
       });
 
       const data = await res.json();
@@ -215,6 +220,11 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
         if (formatted) {
           term.writeln(formatted);
         }
+
+        if (data.cwd) {
+          currentCwdRef.current = data.cwd;
+          setCurrentCwd(data.cwd);
+        }
       } else {
         term.writeln(`\x1b[31mError: ${data.message || "Command execution failed."}\x1b[0m`);
       }
@@ -223,7 +233,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
     } finally {
       setExecuting(false);
       isExecutingRef.current = false;
-      term.write(getPrompt(server, currentCwd));
+      term.write(getPrompt(server, currentCwdRef.current));
     }
   };
 
@@ -238,7 +248,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   const handleClear = () => {
     if (xtermInstance.current) {
       xtermInstance.current.clear();
-      xtermInstance.current.write(getPrompt(currentServerRef.current, currentCwd));
+      xtermInstance.current.write(getPrompt(currentServerRef.current, currentCwdRef.current));
     }
   };
 
@@ -246,14 +256,28 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
     <div className="bg-slate-950 border border-slate-800 rounded-2xl flex flex-col h-[calc(100vh-10rem)] shadow-2xl overflow-hidden">
       {/* Terminal Window Top Bar */}
       <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between text-xs shrink-0">
-        <div className="flex items-center gap-2 font-mono">
-          <span className="h-3 w-3 rounded-full bg-rose-500/80 inline-block" />
-          <span className="h-3 w-3 rounded-full bg-amber-500/80 inline-block" />
-          <span className="h-3 w-3 rounded-full bg-emerald-500/80 inline-block" />
-          <span className="ml-2 font-bold text-slate-300">
+        <div className="flex items-center gap-3 font-mono">
+          <div className="flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-full bg-rose-500/80 inline-block" />
+            <span className="h-3 w-3 rounded-full bg-amber-500/80 inline-block" />
+            <span className="h-3 w-3 rounded-full bg-emerald-500/80 inline-block" />
+          </div>
+          <span className="ml-1 font-bold text-slate-200">
             {currentServer ? `${currentServer.username}@${currentServer.host}` : "No Server Selected"}
           </span>
-          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full ml-2">
+
+          {/* Location / Current Working Directory (PWD) Badge */}
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700/80 text-[11px] font-mono text-cyan-300">
+            <svg className="w-3.5 h-3.5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <span>PWD:</span>
+            <span className="font-bold text-white tracking-wide truncate max-w-[280px]" title={currentCwd}>
+              {currentCwd}
+            </span>
+          </div>
+
+          <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
             Canvas GPU Mode
           </span>
         </div>
