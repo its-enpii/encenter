@@ -15,9 +15,20 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   const xtermInstance = useRef<any>(null);
   const fitAddonInstance = useRef<any>(null);
   const inputBuffer = useRef<string>("");
+  const currentServerRef = useRef<Server | null>(currentServer);
+  const isExecutingRef = useRef<boolean>(false);
 
   const [executing, setExecuting] = useState(false);
   const [currentCwd, setCurrentCwd] = useState("~");
+
+  // Keep ref up to date to avoid stale closures in xterm event listeners
+  useEffect(() => {
+    currentServerRef.current = currentServer;
+    if (xtermInstance.current && currentServer) {
+      xtermInstance.current.writeln(`\r\n\x1b[36m[+] Switched target node to: ${currentServer.label} (${currentServer.host})\x1b[0m`);
+      xtermInstance.current.write(getPrompt(currentServer, currentCwd));
+    }
+  }, [currentServer]);
 
   // Prompt formatting helper
   const getPrompt = (server: Server | null, dir = "~") => {
@@ -80,14 +91,21 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
         fitAddon.fit();
         xtermInstance.current = term;
 
-        // Welcome banner with clean Unicode bullet
+        // Welcome banner
+        const server = currentServerRef.current;
         term.writeln("\x1b[1;32m[+] Welcome to EnVault Interactive Xterm Console (Canvas Accelerated)\x1b[0m");
-        term.writeln("\x1b[90mConnected target node: " + (currentServer ? `${currentServer.label} (${currentServer.host})` : "None") + "\x1b[0m");
-        term.write(getPrompt(currentServer, "~"));
+        term.writeln(
+          "\x1b[90mConnected target node: " +
+            (server ? `${server.label} (${server.host})` : "None - Select a server from sidebar") +
+            "\x1b[0m"
+        );
+        term.write(getPrompt(server, "~"));
 
-        // Key handler
+        // Key handler with ref checking
         term.onData(async (data: string) => {
-          if (!xtermInstance.current) return;
+          if (!xtermInstance.current || isExecutingRef.current) return;
+
+          const activeServer = currentServerRef.current;
 
           // Enter key
           if (data === "\r") {
@@ -98,13 +116,19 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
             if (cmd) {
               if (cmd === "clear") {
                 term.clear();
-                term.write(getPrompt(currentServer, currentCwd));
+                term.write(getPrompt(activeServer, currentCwd));
                 return;
               }
 
-              await executeCommandInTerm(cmd);
+              if (!activeServer) {
+                term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m");
+                term.write(getPrompt(null, currentCwd));
+                return;
+              }
+
+              await runRemoteCommand(activeServer, cmd);
             } else {
-              term.write(getPrompt(currentServer, currentCwd));
+              term.write(getPrompt(activeServer, currentCwd));
             }
           }
           // Backspace key
@@ -144,9 +168,8 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
 
     return () => {
       isMounted = false;
-      // Do not dispose on tab switch - keep xterm instance intact in memory
     };
-  }, [currentServer]);
+  }, []);
 
   // Re-fit canvas layout when tab becomes active again
   useEffect(() => {
@@ -161,14 +184,15 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   }, [activeTab]);
 
   // Execute Command via Backend SSH Service and output to Xterm
-  const executeCommandInTerm = async (cmd: string) => {
-    if (!currentServer || !xtermInstance.current) return;
+  const runRemoteCommand = async (server: Server, cmd: string) => {
+    if (!xtermInstance.current) return;
     setExecuting(true);
+    isExecutingRef.current = true;
 
     const term = xtermInstance.current;
 
     try {
-      const res = await apiFetch(`/servers/${currentServer.id}/ssh/exec`, {
+      const res = await apiFetch(`/servers/${server.id}/ssh/exec`, {
         method: "POST",
         body: JSON.stringify({ command: cmd }),
       });
@@ -178,29 +202,33 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
       if (res.ok) {
         const output = data.output || "";
         const formatted = output.replace(/\r?\n/g, "\r\n");
-        term.writeln(formatted);
+        if (formatted) {
+          term.writeln(formatted);
+        }
       } else {
         term.writeln(`\x1b[31mError: ${data.message || "Command execution failed."}\x1b[0m`);
       }
     } catch (err) {
-      term.writeln("\x1b[31mError: Network failure communicating with gateway.\x1b[0m");
+      term.writeln("\x1b[31mError: Network failure communicating with backend gateway.\x1b[0m");
     } finally {
       setExecuting(false);
-      term.write(getPrompt(currentServer, currentCwd));
+      isExecutingRef.current = false;
+      term.write(getPrompt(server, currentCwd));
     }
   };
 
   const handleRunQuickCmd = async (cmd: string) => {
-    if (!xtermInstance.current || executing) return;
+    const server = currentServerRef.current;
+    if (!xtermInstance.current || executing || !server) return;
     const term = xtermInstance.current;
     term.write(cmd + "\r\n");
-    await executeCommandInTerm(cmd);
+    await runRemoteCommand(server, cmd);
   };
 
   const handleClear = () => {
     if (xtermInstance.current) {
       xtermInstance.current.clear();
-      xtermInstance.current.write(getPrompt(currentServer, currentCwd));
+      xtermInstance.current.write(getPrompt(currentServerRef.current, currentCwd));
     }
   };
 
@@ -213,7 +241,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
           <span className="h-3 w-3 rounded-full bg-amber-500/80 inline-block" />
           <span className="h-3 w-3 rounded-full bg-emerald-500/80 inline-block" />
           <span className="ml-2 font-bold text-slate-300">
-            {currentServer ? `${currentServer.username}@${currentServer.host}` : "xterm-console"}
+            {currentServer ? `${currentServer.username}@${currentServer.host}` : "No Server Selected"}
           </span>
           <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full ml-2">
             Canvas GPU Mode
@@ -239,8 +267,8 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
           <button
             key={cmd}
             onClick={() => handleRunQuickCmd(cmd)}
-            disabled={executing}
-            className="px-2.5 py-1 bg-slate-800/80 hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 rounded-lg font-mono text-[11px] border border-slate-700/60 shrink-0 transition-colors"
+            disabled={executing || !currentServer}
+            className="px-2.5 py-1 bg-slate-800/80 hover:bg-emerald-500/20 hover:text-emerald-300 text-slate-300 rounded-lg font-mono text-[11px] border border-slate-700/60 shrink-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {cmd}
           </button>
