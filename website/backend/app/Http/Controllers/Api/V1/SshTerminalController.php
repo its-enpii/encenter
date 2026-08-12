@@ -53,9 +53,14 @@ class SshTerminalController extends Controller
                 $parts = explode($marker, $rawOutput);
                 $cleanOutput = rtrim($parts[0]);
                 if (isset($parts[1])) {
-                    $lines = array_filter(explode("\n", trim($parts[1])));
+                    $afterMarker = trim($parts[1]);
+                    $lines = array_values(array_filter(array_map('trim', explode("\n", $afterMarker))));
                     if (!empty($lines)) {
-                        $newCwd = trim(end($lines));
+                        $candidate = end($lines);
+                        // Strict validation: A valid Linux/Unix directory path MUST start with '/'
+                        if (str_starts_with($candidate, '/')) {
+                            $newCwd = $candidate;
+                        }
                     }
                 }
             }
@@ -93,7 +98,6 @@ class SshTerminalController extends Controller
         try {
             $sftp = $this->sshService->sftp($server);
 
-            // Change directory to target path first to resolve canonical PWD
             $chdirSuccess = $sftp->chdir($targetPath);
             $canonicalPwd = $sftp->pwd();
 
