@@ -31,12 +31,18 @@ class SshTerminalController extends Controller
             'cwd' => 'nullable|string',
         ]);
 
-        $cmd = $validated['command'];
-        $targetCwd = !empty($validated['cwd']) ? $validated['cwd'] : '~';
+        $cmd = trim($validated['command']);
+        $targetCwd = !empty($validated['cwd']) ? trim($validated['cwd']) : '~';
 
-        $delimiter = "__ENV_PWD__:";
-        // Chain command execution and retrieve updated PWD
-        $fullCmd = "cd " . escapeshellarg($targetCwd) . " && " . $cmd . "; echo ''; echo '{$delimiter}'\$(pwd)";
+        // Do not wrap ~ in quotes so bash expands home directory correctly
+        if ($targetCwd === '~' || $targetCwd === '' || str_contains($targetCwd, "\n")) {
+            $cdCmd = "cd ~";
+        } else {
+            $cdCmd = "cd " . escapeshellarg($targetCwd);
+        }
+
+        $marker = "___PWD_MARKER___";
+        $fullCmd = "{$cdCmd} 2>/dev/null; {$cmd}; echo ''; echo '{$marker}'; pwd";
 
         try {
             $rawOutput = $this->sshService->execute($server, $fullCmd);
@@ -44,11 +50,15 @@ class SshTerminalController extends Controller
             $newCwd = $targetCwd;
             $cleanOutput = $rawOutput;
 
-            if (str_contains($rawOutput, $delimiter)) {
-                $parts = explode($delimiter, $rawOutput);
-                $newCwd = trim(end($parts));
-                array_pop($parts);
-                $cleanOutput = implode($delimiter, $parts);
+            if (str_contains($rawOutput, $marker)) {
+                $parts = explode($marker, $rawOutput);
+                $cleanOutput = rtrim($parts[0]);
+                if (isset($parts[1])) {
+                    $lines = array_filter(explode("\n", trim($parts[1])));
+                    if (!empty($lines)) {
+                        $newCwd = trim(end($lines));
+                    }
+                }
             }
 
             ActivityLog::log('SSH_EXEC', 'SERVER', $server->id, [
@@ -59,7 +69,7 @@ class SshTerminalController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'output' => rtrim($cleanOutput),
+                'output' => $cleanOutput,
                 'cwd' => $newCwd ?: $targetCwd,
             ]);
         } catch (Exception $e) {
