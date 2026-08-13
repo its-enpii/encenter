@@ -165,9 +165,9 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
     }
   };
 
-  const runDiagnostic = async (cmd: string, title: string) => {
+  const runDiagnostic = async (title: string, cmd: string) => {
     if (!currentServer) return;
-    setRunningDiag(cmd);
+    setRunningDiag(title);
     try {
       const res = await apiFetch(`/servers/${currentServer.id}/ssh/exec`, {
         method: "POST",
@@ -318,7 +318,7 @@ function ConnectPageContent({ serverIdParam }: ConnectPageProps) {
         onHandshake={() => handleHandshake(currentServer)}
       />
 
-      {/* MAIN VIEW CONTENT AREA - Unique key per server to force fresh terminal instances on switch */}
+      {/* MAIN VIEW CONTENT AREA */}
       <main className="flex-1 min-w-0 h-full overflow-y-auto p-6 md:p-8 custom-scrollbar">
         <div className={activeTab === "dashboard" ? "block" : "hidden"}>
           <ServerDashboardView

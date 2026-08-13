@@ -22,10 +22,10 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   const [executing, setExecuting] = useState(false);
   const [currentCwd, setCurrentCwd] = useState("~");
 
-  // Prompt formatting helper
+  // Prompt formatting helper (No leading \r\n to prevent premature line wrap)
   const getPrompt = (server: Server | null, dir = "~") => {
     const userHost = server ? `${server.username}@${server.host}` : "ssh-terminal";
-    return `\r\n\x1b[1;32m${userHost}\x1b[0m:\x1b[1;34m${dir}\x1b[0m$ `;
+    return `\x1b[1;32m${userHost}\x1b[0m:\x1b[1;34m${dir}\x1b[0m$ `;
   };
 
   // Reset terminal buffer and prompt clean when target server changes
@@ -41,10 +41,10 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
 
       if (currentServer) {
         term.writeln(`\x1b[1;32m[+] Interactive Session Initialized\x1b[0m`);
-        term.writeln(`\x1b[90mConnected target node: ${currentServer.label} (${currentServer.host})\x1b[0m`);
+        term.writeln(`\x1b[90mConnected target node: ${currentServer.label} (${currentServer.host})\x1b[0m\r\n`);
         term.write(getPrompt(currentServer, "~"));
       } else {
-        term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m");
+        term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m\r\n");
         term.write(getPrompt(null, "~"));
       }
     }
@@ -102,18 +102,24 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
         }
 
         term.open(terminalRef.current);
-        fitAddon.fit();
         xtermInstance.current = term;
 
-        // Welcome banner
-        const server = currentServerRef.current;
-        term.writeln("\x1b[1;32m[+] Welcome to EnVault Interactive Xterm Console (Canvas Accelerated)\x1b[0m");
-        term.writeln(
-          "\x1b[90mConnected target node: " +
-            (server ? `${server.label} (${server.host})` : "None - Select a server from sidebar") +
-            "\x1b[0m"
-        );
-        term.write(getPrompt(server, currentCwdRef.current));
+        // Wait for container DOM layout to stabilize before fitting and printing initial prompt
+        setTimeout(() => {
+          if (!isMounted) return;
+          try {
+            fitAddon.fit();
+          } catch (e) {}
+
+          const server = currentServerRef.current;
+          term.writeln("\x1b[1;32m[+] Welcome to EnVault Interactive Xterm Console (Canvas Accelerated)\x1b[0m");
+          term.writeln(
+            "\x1b[90mConnected target node: " +
+              (server ? `${server.label} (${server.host})` : "None - Select a server from sidebar") +
+              "\x1b[0m\r\n"
+          );
+          term.write(getPrompt(server, currentCwdRef.current));
+        }, 100);
 
         // Key handler with ref checking
         term.onData(async (data: string) => {
@@ -135,7 +141,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
               }
 
               if (!activeServer) {
-                term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m");
+                term.writeln("\x1b[33m[!] No server node selected. Please select a server from the sub-sidebar.\x1b[0m\r\n");
                 term.write(getPrompt(null, currentCwdRef.current));
                 return;
               }
