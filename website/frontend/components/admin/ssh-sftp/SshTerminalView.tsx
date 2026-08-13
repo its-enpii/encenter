@@ -87,6 +87,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
             white: "#f8fafc",
           },
           convertEol: true,
+          rightClickSelectsWord: true,
         });
 
         const fitAddon = new FitAddon();
@@ -103,6 +104,71 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
 
         term.open(terminalRef.current);
         xtermInstance.current = term;
+
+        // Auto Copy on Text Selection
+        term.onSelectionChange(() => {
+          if (term.hasSelection()) {
+            const selection = term.getSelection();
+            if (selection) {
+              navigator.clipboard.writeText(selection).catch(() => {});
+            }
+          }
+        });
+
+        // Keyboard Shortcut Handler for Copy & Paste (Ctrl+C, Ctrl+V, Cmd+C, Cmd+V, Shift+Insert)
+        term.attachCustomKeyEventHandler((arg: KeyboardEvent) => {
+          if (arg.type !== "keydown") return true;
+
+          const isCtrlOrCmd = arg.ctrlKey || arg.metaKey;
+          const keyLower = arg.key.toLowerCase();
+
+          // Copy: Ctrl+C / Cmd+C when text is selected
+          if (isCtrlOrCmd && keyLower === "c" && term.hasSelection()) {
+            navigator.clipboard.writeText(term.getSelection()).catch(() => {});
+            return false;
+          }
+
+          // Paste: Ctrl+V / Cmd+V / Shift+Insert
+          if ((isCtrlOrCmd && keyLower === "v") || (arg.shiftKey && arg.key === "Insert")) {
+            navigator.clipboard.readText().then((text) => {
+              if (text && xtermInstance.current && !isExecutingRef.current) {
+                const cleanText = text.replace(/\r?\n/g, "");
+                inputBuffer.current += cleanText;
+                xtermInstance.current.write(cleanText);
+              }
+            }).catch(() => {});
+            return false;
+          }
+
+          return true;
+        });
+
+        // DOM Paste Event Listener
+        const containerEl = terminalRef.current;
+        const handleNativePaste = (e: ClipboardEvent) => {
+          e.preventDefault();
+          const pastedText = e.clipboardData?.getData("text");
+          if (pastedText && xtermInstance.current && !isExecutingRef.current) {
+            const cleanText = pastedText.replace(/\r?\n/g, "");
+            inputBuffer.current += cleanText;
+            xtermInstance.current.write(cleanText);
+          }
+        };
+
+        // Right-Click Context Menu Paste Listener
+        const handleContextMenu = (e: MouseEvent) => {
+          e.preventDefault();
+          navigator.clipboard.readText().then((text) => {
+            if (text && xtermInstance.current && !isExecutingRef.current) {
+              const cleanText = text.replace(/\r?\n/g, "");
+              inputBuffer.current += cleanText;
+              xtermInstance.current.write(cleanText);
+            }
+          }).catch(() => {});
+        };
+
+        containerEl?.addEventListener("paste", handleNativePaste);
+        containerEl?.addEventListener("contextmenu", handleContextMenu);
 
         // Key handler with ref checking
         term.onData(async (data: string) => {
@@ -141,7 +207,13 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
               term.write("\b \b");
             }
           }
-          // Printable characters
+          // Multi-character pasted data or printable characters
+          else if (data.length > 1) {
+            const clean = data.replace(/\r?\n/g, "");
+            inputBuffer.current += clean;
+            term.write(clean);
+          }
+          // Single printable character
           else if (data >= " " || data === "\t") {
             inputBuffer.current += data;
             term.write(data);
@@ -161,6 +233,8 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
 
         return () => {
           window.removeEventListener("resize", handleResize);
+          containerEl?.removeEventListener("paste", handleNativePaste);
+          containerEl?.removeEventListener("contextmenu", handleContextMenu);
         };
       } catch (err) {
         console.error("Xterm setup error:", err);
@@ -182,7 +256,6 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
           const term = xtermInstance.current;
           fitAddonInstance.current.fit();
 
-          // Re-write banner & prompt on full visible width to eliminate line wrapping
           term.clear();
           inputBuffer.current = "";
           const server = currentServerRef.current;
