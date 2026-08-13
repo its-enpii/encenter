@@ -22,7 +22,7 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
   const [executing, setExecuting] = useState(false);
   const [currentCwd, setCurrentCwd] = useState("~");
 
-  // Prompt formatting helper (No leading \r\n to prevent premature line wrap)
+  // Prompt formatting helper
   const getPrompt = (server: Server | null, dir = "~") => {
     const userHost = server ? `${server.username}@${server.host}` : "ssh-terminal";
     return `\x1b[1;32m${userHost}\x1b[0m:\x1b[1;34m${dir}\x1b[0m$ `;
@@ -104,23 +104,6 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
         term.open(terminalRef.current);
         xtermInstance.current = term;
 
-        // Wait for container DOM layout to stabilize before fitting and printing initial prompt
-        setTimeout(() => {
-          if (!isMounted) return;
-          try {
-            fitAddon.fit();
-          } catch (e) {}
-
-          const server = currentServerRef.current;
-          term.writeln("\x1b[1;32m[+] Welcome to EnVault Interactive Xterm Console (Canvas Accelerated)\x1b[0m");
-          term.writeln(
-            "\x1b[90mConnected target node: " +
-              (server ? `${server.label} (${server.host})` : "None - Select a server from sidebar") +
-              "\x1b[0m\r\n"
-          );
-          term.write(getPrompt(server, currentCwdRef.current));
-        }, 100);
-
         // Key handler with ref checking
         term.onData(async (data: string) => {
           if (!xtermInstance.current || isExecutingRef.current) return;
@@ -191,12 +174,25 @@ export function SshTerminalView({ currentServer, activeTab }: SshTerminalViewPro
     };
   }, []);
 
-  // Re-fit canvas layout when tab becomes active again
+  // Re-fit canvas layout & refresh prompt cleanly when terminal tab becomes active
   useEffect(() => {
-    if (activeTab === "terminal" && fitAddonInstance.current) {
+    if (activeTab === "terminal" && fitAddonInstance.current && xtermInstance.current) {
       const timer = setTimeout(() => {
         try {
+          const term = xtermInstance.current;
           fitAddonInstance.current.fit();
+
+          // Re-write banner & prompt on full visible width to eliminate line wrapping
+          term.clear();
+          inputBuffer.current = "";
+          const server = currentServerRef.current;
+          term.writeln("\x1b[1;32m[+] Welcome to EnVault Interactive Xterm Console (Canvas Accelerated)\x1b[0m");
+          term.writeln(
+            "\x1b[90mConnected target node: " +
+              (server ? `${server.label} (${server.host})` : "None - Select a server from sidebar") +
+              "\x1b[0m\r\n"
+          );
+          term.write(getPrompt(server, currentCwdRef.current));
         } catch (e) {}
       }, 50);
       return () => clearTimeout(timer);
