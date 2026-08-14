@@ -138,7 +138,9 @@ class BackupController extends Controller
             if ($backupJob->status === 'success') {
                 $payload['file_name'] = $backupJob->file_name;
                 $payload['file_size_bytes'] = $backupJob->file_size_bytes;
+                $payload['download_url'] = $backupJob->storage_file_url;
                 $payload['storage_file_url'] = $backupJob->storage_file_url;
+                $payload['gdrive_file_url'] = $backupJob->storage_file_url; // backward compatibility
             } else {
                 $payload['error_message'] = $backupJob->error_message;
             }

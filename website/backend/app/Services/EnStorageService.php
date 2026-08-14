@@ -139,7 +139,13 @@ class EnStorageService
      * Upload a file to EnStorage.
      * Uses simple multipart for small files, chunked upload for large files.
      *
-     * @return array{file_id: string, file_url: string}
+     * @return array{
+     *   file_id: string,
+     *   file_url: string,
+     *   download_url: string,
+     *   preview_url: string,
+     *   share_token: ?string
+     * }
      */
     public function uploadFile(string $filePath, string $fileName, ?string $folderId = null): array
     {
@@ -163,7 +169,8 @@ class EnStorageService
     {
         $request = $this->client()
             ->timeout(300)
-            ->attach('file', fopen($filePath, 'r'), $fileName);
+            ->attach('file', fopen($filePath, 'r'), $fileName)
+            ->attach('shareable', '1');
 
         if ($folderId) {
             $request = $request->asMultipart()->attach('folder_id', $folderId);
@@ -175,17 +182,16 @@ class EnStorageService
             $this->handleUploadError($response);
         }
 
-        $files = $response->json('data.files', []);
+        $files = $response->json('data.accepted') ?? $response->json('data.files') ?? [];
         if (empty($files)) {
             throw new Exception('EnStorage upload returned no file data.');
         }
 
         $file = $files[0];
+        $fileId = $file['file_id'] ?? $file['id'];
+        $shareToken = $file['share_token'] ?? null;
 
-        return [
-            'file_id' => $file['file_id'],
-            'file_url' => $this->buildFileUrl($file['file_id']),
-        ];
+        return $this->formatUploadResult($fileId, $shareToken);
     }
 
     /**
@@ -202,7 +208,7 @@ class EnStorageService
             'mime_type' => $mimeType,
             'total_size' => $fileSize,
             'total_chunks' => $totalChunks,
-            'shareable' => false,
+            'shareable' => true,
         ];
 
         if ($folderId) {
@@ -257,9 +263,31 @@ class EnStorageService
             throw new Exception('EnStorage chunked complete failed: ' . $completeResponse->body());
         }
 
+        $data = $completeResponse->json('data') ?? [];
+        $shareToken = $data['share_token'] ?? null;
+
+        return $this->formatUploadResult($fileId, $shareToken);
+    }
+
+    /**
+     * Build standard upload result with both direct download & preview links.
+     */
+    private function formatUploadResult(string $fileId, ?string $shareToken): array
+    {
+        if ($shareToken) {
+            $downloadUrl = "{$this->baseUrl}/s/{$shareToken}?download=1";
+            $previewUrl = "{$this->baseUrl}/s/{$shareToken}/view";
+        } else {
+            $downloadUrl = "{$this->baseUrl}/api/v1/files/{$fileId}/download";
+            $previewUrl = "{$this->baseUrl}/api/v1/files/{$fileId}";
+        }
+
         return [
             'file_id' => $fileId,
-            'file_url' => $this->buildFileUrl($fileId),
+            'share_token' => $shareToken,
+            'download_url' => $downloadUrl,
+            'preview_url' => $previewUrl,
+            'file_url' => $downloadUrl, // primary direct download link
         ];
     }
 
@@ -312,11 +340,6 @@ class EnStorageService
                 'Authorization' => 'Bearer ' . $this->apiKey,
                 'Accept' => 'application/json',
             ]);
-    }
-
-    private function buildFileUrl(string $fileId): string
-    {
-        return $this->baseUrl . '/api/v1/files/' . $fileId;
     }
 
     private function handleUploadError($response): void

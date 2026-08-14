@@ -178,14 +178,17 @@ class RunBackupJob implements ShouldQueue
                 throw new Exception("EnStorage upload failed (no file ID returned).");
             }
 
-            // Success
             $duration = (int) ceil(microtime(true) - $startTime);
+            $directDownloadUrl = $uploadResult['download_url'] ?? $uploadResult['file_url'];
+            $previewUrl = $uploadResult['preview_url'] ?? $uploadResult['file_url'];
+
+            // Success
             $this->backupJob->update([
                 'status' => 'success',
                 'finished_at' => now(),
                 'duration_seconds' => max(1, $duration),
                 'storage_file_id' => $uploadResult['file_id'],
-                'storage_file_url' => $uploadResult['file_url'],
+                'storage_file_url' => $directDownloadUrl,
                 'error_message' => null,
             ]);
 
@@ -199,7 +202,10 @@ class RunBackupJob implements ShouldQueue
                         'status' => 'success',
                         'file_name' => $tempFileName,
                         'file_size_bytes' => $fileSize,
-                        'storage_file_url' => $uploadResult['file_url'],
+                        'download_url' => $directDownloadUrl,
+                        'preview_url' => $previewUrl,
+                        'storage_file_url' => $directDownloadUrl,
+                        'gdrive_file_url' => $directDownloadUrl, // backward compatibility
                         'duration_seconds' => $this->formatDuration(max(1, $duration)),
                         'triggered_by' => $this->backupJob->triggered_by,
                     ], $user);
