@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 class EnStorageService
 {
-    private const CHUNK_SIZE = 50 * 1024 * 1024; // 50 MB per chunk
-    private const MAX_SIMPLE_UPLOAD = 100 * 1024 * 1024; // 100 MB
+    private const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB per chunk (safe for proxies & nginx)
+    private const MAX_SIMPLE_UPLOAD = 1024 * 1024 * 1024; // 1 GB (EnStorage supports up to 1GB per multipart file)
 
     protected string $baseUrl;
     protected string $apiKey;
@@ -137,7 +137,7 @@ class EnStorageService
 
     /**
      * Upload a file to EnStorage.
-     * Uses simple multipart for small files, chunked upload for large files.
+     * Uses native multipart upload for files <= 1 GB, chunked upload for > 1 GB.
      *
      * @return array{
      *   file_id: string,
@@ -163,20 +163,31 @@ class EnStorageService
     }
 
     /**
-     * Simple multipart upload for files <= 100 MB.
+     * Native multipart upload for files <= 1 GB.
      */
     private function simpleUpload(string $filePath, string $fileName, ?string $folderId): array
     {
-        $request = $this->client()
-            ->timeout(300)
-            ->attach('file', fopen($filePath, 'r'), $fileName)
-            ->attach('shareable', '1');
-
-        if ($folderId) {
-            $request = $request->asMultipart()->attach('folder_id', $folderId);
+        $handle = fopen($filePath, 'r');
+        if (!$handle) {
+            throw new Exception('Cannot open file for reading: ' . $filePath);
         }
 
-        $response = $request->post('/files/upload');
+        try {
+            $request = $this->client()
+                ->timeout(1800) // 30 minutes for large files
+                ->attach('file', $handle, $fileName)
+                ->attach('shareable', '1');
+
+            if ($folderId) {
+                $request = $request->attach('folder_id', $folderId);
+            }
+
+            $response = $request->post('/files/upload');
+        } finally {
+            if (is_resource($handle)) {
+                fclose($handle);
+            }
+        }
 
         if (!$response->successful()) {
             $this->handleUploadError($response);
@@ -184,7 +195,7 @@ class EnStorageService
 
         $files = $response->json('data.accepted') ?? $response->json('data.files') ?? [];
         if (empty($files)) {
-            throw new Exception('EnStorage upload returned no file data.');
+            throw new Exception('EnStorage upload returned no accepted file data.');
         }
 
         $file = $files[0];
@@ -195,7 +206,7 @@ class EnStorageService
     }
 
     /**
-     * Chunked upload for files > 100 MB.
+     * Chunked upload for very large files (> 1 GB).
      */
     private function chunkedUpload(string $filePath, string $fileName, int $fileSize, ?string $folderId): array
     {
@@ -241,9 +252,10 @@ class EnStorageService
                     throw new Exception("Failed to read chunk {$chunkIndex} from file.");
                 }
 
+                // Send chunk as multipart 'chunk' file
                 $chunkResponse = $this->client()
                     ->timeout(600)
-                    ->withBody($chunkData, 'application/octet-stream')
+                    ->attach('chunk', $chunkData, "chunk_{$chunkIndex}")
                     ->post("/files/upload/{$fileId}/chunk/{$chunkIndex}");
 
                 if (!$chunkResponse->successful()) {
@@ -256,7 +268,7 @@ class EnStorageService
 
         // 3. Complete
         $completeResponse = $this->client()
-            ->timeout(120)
+            ->timeout(300)
             ->post("/files/upload/{$fileId}/complete");
 
         if (!$completeResponse->successful()) {
@@ -272,14 +284,12 @@ class EnStorageService
     /**
      * Build standard upload result:
      * - preview_url: Web UI landing page in EnStorage frontend (/s/{token})
-     * - download_url: Backend API endpoint that returns attachment stream directly (/api/v1/s/{token}?download=1)
+     * - download_url: Direct download URL (/api/v1/s/{token}?download=1)
      */
     private function formatUploadResult(string $fileId, ?string $shareToken): array
     {
         if ($shareToken) {
-            // Direct download hits the backend API endpoint to stream file as attachment
             $downloadUrl = "{$this->baseUrl}/api/v1/s/{$shareToken}?download=1";
-            // Preview URL opens the EnStorage frontend landing page with download button & file info
             $previewUrl = "{$this->baseUrl}/s/{$shareToken}";
         } else {
             $downloadUrl = "{$this->baseUrl}/api/v1/files/{$fileId}/download";
@@ -291,7 +301,7 @@ class EnStorageService
             'share_token' => $shareToken,
             'download_url' => $downloadUrl,
             'preview_url' => $previewUrl,
-            'file_url' => $downloadUrl, // primary direct download link
+            'file_url' => $downloadUrl,
         ];
     }
 
