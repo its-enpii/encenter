@@ -270,13 +270,17 @@ class EnStorageService
     }
 
     /**
-     * Build standard upload result with both direct download & preview links.
+     * Build standard upload result:
+     * - preview_url: Web UI landing page in EnStorage frontend (/s/{token})
+     * - download_url: Backend API endpoint that returns attachment stream directly (/api/v1/s/{token}?download=1)
      */
     private function formatUploadResult(string $fileId, ?string $shareToken): array
     {
         if ($shareToken) {
-            $downloadUrl = "{$this->baseUrl}/s/{$shareToken}?download=1";
-            $previewUrl = "{$this->baseUrl}/s/{$shareToken}/view";
+            // Direct download hits the backend API endpoint to stream file as attachment
+            $downloadUrl = "{$this->baseUrl}/api/v1/s/{$shareToken}?download=1";
+            // Preview URL opens the EnStorage frontend landing page with download button & file info
+            $previewUrl = "{$this->baseUrl}/s/{$shareToken}";
         } else {
             $downloadUrl = "{$this->baseUrl}/api/v1/files/{$fileId}/download";
             $previewUrl = "{$this->baseUrl}/api/v1/files/{$fileId}";
