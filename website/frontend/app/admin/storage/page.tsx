@@ -41,14 +41,17 @@ export default function StoragePage() {
       if (!response.ok) throw new Error("Failed to load config");
       
       const data = await response.json();
-      if (data.data) {
+      if (data.data && data.data.enstorage_url) {
         setConfig(data.data);
         if (data.data.folder_name) {
           setFolderName(data.data.folder_name);
         }
+      } else {
+        setConfig(null);
       }
     } catch (err) {
       console.error("Storage config fetch error:", err);
+      setConfig(null);
     } finally {
       setLoading(false);
     }
@@ -92,13 +95,13 @@ export default function StoragePage() {
 
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.data) {
         setConfig(data.data);
         setShowConnectForm(false);
         setConnectUrl("");
         setConnectApiKey("");
         setConnectFolderName("EnCenter_Backups");
-        if (data.data?.folder_name) {
+        if (data.data.folder_name) {
           setFolderName(data.data.folder_name);
         }
       } else {
@@ -122,6 +125,7 @@ export default function StoragePage() {
       if (response.ok) {
         setConfig(null);
         setDisconnectDialog(false);
+        setShowConnectForm(false);
       } else {
         setErrorDialog({
           open: true,
@@ -150,6 +154,8 @@ export default function StoragePage() {
       </div>
     );
   }
+
+  const isConnected = !!(config && config.enstorage_url && config.is_active);
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -193,7 +199,7 @@ export default function StoragePage() {
             </div>
 
             <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800">
-              {config ? (
+              {isConnected ? (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -201,7 +207,7 @@ export default function StoragePage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-white">CONNECTED</p>
-                      <p className="text-xs text-slate-400">{config.enstorage_url || 'EnStorage Instance'}</p>
+                      <p className="text-xs text-slate-400">{config.enstorage_url}</p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-300" onClick={() => setDisconnectDialog(true)}>
@@ -211,7 +217,7 @@ export default function StoragePage() {
               ) : showConnectForm ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">EnStorage URL</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">EnStorage Base URL</label>
                     <input
                       type="url"
                       value={connectUrl}
@@ -231,7 +237,7 @@ export default function StoragePage() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Backup Folder Name</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Backup Root Folder Name</label>
                     <input
                       type="text"
                       value={connectFolderName}
@@ -257,7 +263,7 @@ export default function StoragePage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-400">NOT CONNECTED</p>
-                      <p className="text-xs text-slate-500">Enable cloud syncing for your archives</p>
+                      <p className="text-xs text-slate-500">Provide an API key to enable remote backups</p>
                     </div>
                   </div>
                   <Button size="sm" onClick={() => setShowConnectForm(true)}>
@@ -267,7 +273,7 @@ export default function StoragePage() {
               )}
             </div>
 
-            {config && (
+            {isConnected && (
               <div className="space-y-4 pt-4 border-t border-slate-800">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Configuration Details</h3>
                 <div className="grid grid-cols-2 gap-4">

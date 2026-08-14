@@ -8,35 +8,52 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Rename gdrive columns in backup_jobs
-        Schema::table('backup_jobs', function (Blueprint $table) {
-            $table->renameColumn('gdrive_file_id', 'storage_file_id');
-            $table->renameColumn('gdrive_file_url', 'storage_file_url');
-        });
+        // Rename gdrive columns in backup_jobs if exists
+        if (Schema::hasColumn('backup_jobs', 'gdrive_file_id')) {
+            Schema::table('backup_jobs', function (Blueprint $table) {
+                $table->renameColumn('gdrive_file_id', 'storage_file_id');
+                $table->renameColumn('gdrive_file_url', 'storage_file_url');
+            });
+        }
 
         // Update user_storages for EnStorage provider
         Schema::table('user_storages', function (Blueprint $table) {
-            $table->text('enstorage_url')->nullable()->after('email');
-            $table->text('api_key')->nullable()->after('enstorage_url');
+            if (!Schema::hasColumn('user_storages', 'enstorage_url')) {
+                $table->text('enstorage_url')->nullable()->after('email');
+            }
+            if (!Schema::hasColumn('user_storages', 'api_key')) {
+                $table->text('api_key')->nullable()->after('enstorage_url');
+            }
         });
 
-        // Migrate existing data: change provider from google_drive to enstorage
+        // Drop old Google-specific columns if they exist
+        $colsToDrop = [];
+        foreach (['access_token', 'refresh_token', 'expires_at'] as $col) {
+            if (Schema::hasColumn('user_storages', $col)) {
+                $colsToDrop[] = $col;
+            }
+        }
+        if (!empty($colsToDrop)) {
+            Schema::table('user_storages', function (Blueprint $table) use ($colsToDrop) {
+                $table->dropColumn($colsToDrop);
+            });
+        }
+
+        // Clear any old google_drive rows that do not have enstorage credentials
         \Illuminate\Support\Facades\DB::table('user_storages')
-            ->where('provider', 'google_drive')
-            ->update(['provider' => 'enstorage']);
-
-        // Drop old Google-specific columns (access_token, refresh_token, expires_at)
-        Schema::table('user_storages', function (Blueprint $table) {
-            $table->dropColumn(['access_token', 'refresh_token', 'expires_at']);
-        });
+            ->whereNull('api_key')
+            ->orWhereNull('enstorage_url')
+            ->delete();
     }
 
     public function down(): void
     {
-        Schema::table('backup_jobs', function (Blueprint $table) {
-            $table->renameColumn('storage_file_id', 'gdrive_file_id');
-            $table->renameColumn('storage_file_url', 'gdrive_file_url');
-        });
+        if (Schema::hasColumn('backup_jobs', 'storage_file_id')) {
+            Schema::table('backup_jobs', function (Blueprint $table) {
+                $table->renameColumn('storage_file_id', 'gdrive_file_id');
+                $table->renameColumn('storage_file_url', 'gdrive_file_url');
+            });
+        }
 
         Schema::table('user_storages', function (Blueprint $table) {
             $table->text('access_token')->nullable();
@@ -47,9 +64,5 @@ return new class extends Migration
         Schema::table('user_storages', function (Blueprint $table) {
             $table->dropColumn(['enstorage_url', 'api_key']);
         });
-
-        \Illuminate\Support\Facades\DB::table('user_storages')
-            ->where('provider', 'enstorage')
-            ->update(['provider' => 'google_drive']);
     }
 };

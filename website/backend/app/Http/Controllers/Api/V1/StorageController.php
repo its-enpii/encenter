@@ -27,6 +27,9 @@ class StorageController extends Controller
         try {
             $storage = UserStorage::where('user_id', Auth::id())
                 ->where('provider', 'enstorage')
+                ->whereNotNull('enstorage_url')
+                ->whereNotNull('api_key')
+                ->whereRaw('"is_active" = true')
                 ->first();
 
             return response()->json([
@@ -36,7 +39,7 @@ class StorageController extends Controller
                     'provider' => $storage->provider,
                     'enstorage_url' => $storage->enstorage_url,
                     'folder_name' => $storage->folder_name,
-                    'is_active' => $storage->is_active,
+                    'is_active' => (bool) $storage->is_active,
                 ] : null,
             ]);
         } catch (Exception $e) {
@@ -89,7 +92,7 @@ class StorageController extends Controller
                     'enstorage_url' => $storage->enstorage_url,
                     'folder_name' => $storage->folder_name,
                     'folder_id' => $storage->folder_id,
-                    'is_active' => $storage->is_active,
+                    'is_active' => true,
                 ],
             ]);
         } catch (Exception $e) {
@@ -111,10 +114,11 @@ class StorageController extends Controller
         ]);
 
         try {
-            $storage = UserStorage::updateOrCreate(
-                ['user_id' => Auth::id(), 'provider' => 'enstorage'],
-                ['folder_name' => $request->folder_name]
-            );
+            $storage = UserStorage::where('user_id', Auth::id())
+                ->where('provider', 'enstorage')
+                ->firstOrFail();
+
+            $storage->update(['folder_name' => $request->folder_name]);
 
             return response()->json([
                 'status' => 'success',
@@ -122,8 +126,9 @@ class StorageController extends Controller
                 'data' => [
                     'id' => $storage->id,
                     'provider' => $storage->provider,
+                    'enstorage_url' => $storage->enstorage_url,
                     'folder_name' => $storage->folder_name,
-                    'is_active' => $storage->is_active,
+                    'is_active' => (bool) $storage->is_active,
                 ],
             ]);
         } catch (Exception $e) {
@@ -157,6 +162,8 @@ class StorageController extends Controller
         try {
             $storage = UserStorage::where('user_id', Auth::id())
                 ->where('provider', 'enstorage')
+                ->whereNotNull('enstorage_url')
+                ->whereNotNull('api_key')
                 ->whereRaw('"is_active" = true')
                 ->first();
 
