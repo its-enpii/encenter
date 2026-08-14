@@ -73,7 +73,7 @@ export default function StoragePage() {
   };
 
   const handleConnect = async () => {
-    if (!connectUrl || !connectApiKey) {
+    if (!connectUrl.trim() || !connectApiKey.trim()) {
       setErrorDialog({
         open: true,
         title: "Missing Fields",
@@ -87,9 +87,9 @@ export default function StoragePage() {
       const response = await apiFetch("/storage/connect", {
         method: "POST",
         body: JSON.stringify({
-          enstorage_url: connectUrl,
-          api_key: connectApiKey,
-          folder_name: connectFolderName,
+          enstorage_url: connectUrl.trim(),
+          api_key: connectApiKey.trim(),
+          folder_name: connectFolderName.trim() || "EnCenter_Backups",
         }),
       });
 
@@ -105,7 +105,7 @@ export default function StoragePage() {
           setFolderName(data.data.folder_name);
         }
       } else {
-        throw new Error(data.message || "Connection failed");
+        throw new Error(data.message || "Failed to establish connection with EnStorage.");
       }
     } catch (err: any) {
       setErrorDialog({
@@ -225,6 +225,7 @@ export default function StoragePage() {
                       placeholder="https://storage.example.com"
                       className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full focus:outline-none focus:border-emerald-500 font-mono"
                     />
+                    <p className="text-[10px] text-slate-500 mt-1">Both `https://domain.com` and `https://domain.com/api/v1` are supported.</p>
                   </div>
                   <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">API Key</label>

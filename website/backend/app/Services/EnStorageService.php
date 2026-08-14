@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\UserStorage;
 use Exception;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -16,15 +17,32 @@ class EnStorageService
     protected string $baseUrl;
     protected string $apiKey;
 
+    /**
+     * Normalize URL so user can input:
+     * - https://storage.domain.com
+     * - https://storage.domain.com/
+     * - https://storage.domain.com/api/v1
+     * - https://storage.domain.com/api/v1/
+     * All will be normalized to https://storage.domain.com
+     */
+    public function normalizeBaseUrl(string $url): string
+    {
+        $trimmed = rtrim(trim($url), '/');
+        if (str_ends_with($trimmed, '/api/v1')) {
+            $trimmed = substr($trimmed, 0, -strlen('/api/v1'));
+        }
+        return rtrim($trimmed, '/');
+    }
+
     public function configure(UserStorage $storage): void
     {
-        $this->baseUrl = rtrim($storage->enstorage_url, '/');
+        $this->baseUrl = $this->normalizeBaseUrl($storage->enstorage_url);
         $this->apiKey = $storage->api_key;
     }
 
     public function configureManual(string $baseUrl, string $apiKey): void
     {
-        $this->baseUrl = rtrim($baseUrl, '/');
+        $this->baseUrl = $this->normalizeBaseUrl($baseUrl);
         $this->apiKey = $apiKey;
     }
 
@@ -33,13 +51,21 @@ class EnStorageService
      */
     public function testConnection(): array
     {
-        $response = $this->client()->get('/auth/me');
+        try {
+            $response = $this->client()->timeout(15)->get('/auth/me');
 
-        if (!$response->successful()) {
-            throw new Exception('EnStorage connection test failed: ' . $response->body());
+            if (!$response->successful()) {
+                $status = $response->status();
+                $err = $response->json('message') ?? $response->body();
+                throw new Exception("EnStorage API returned HTTP {$status}: {$err}");
+            }
+
+            return $response->json('data') ?? [];
+        } catch (ConnectionException $e) {
+            throw new Exception("Could not reach EnStorage at '{$this->baseUrl}': " . $e->getMessage());
+        } catch (\Throwable $e) {
+            throw new Exception($e->getMessage());
         }
-
-        return $response->json('data');
     }
 
     /**
@@ -47,30 +73,34 @@ class EnStorageService
      */
     public function getOrCreateFolder(string $name): string
     {
-        $response = $this->client()->get('/folders', [
-            'parent_id' => 'null',
-            'search' => $name,
-            'per_page' => 100,
-        ]);
+        try {
+            $response = $this->client()->get('/folders', [
+                'parent_id' => 'null',
+                'search' => $name,
+                'per_page' => 100,
+            ]);
 
-        if ($response->successful()) {
-            $folders = $response->json('data', []);
-            foreach ($folders as $folder) {
-                if (strcasecmp($folder['name'], $name) === 0) {
-                    return $folder['id'];
+            if ($response->successful()) {
+                $folders = $response->json('data', []);
+                foreach ($folders as $folder) {
+                    if (strcasecmp($folder['name'], $name) === 0) {
+                        return $folder['id'];
+                    }
                 }
             }
+
+            $response = $this->client()->post('/folders', [
+                'name' => $name,
+            ]);
+
+            if (!$response->successful()) {
+                throw new Exception('Failed to create folder in EnStorage: ' . $response->body());
+            }
+
+            return $response->json('data.id');
+        } catch (\Throwable $e) {
+            throw new Exception("EnStorage folder error: " . $e->getMessage());
         }
-
-        $response = $this->client()->post('/folders', [
-            'name' => $name,
-        ]);
-
-        if (!$response->successful()) {
-            throw new Exception('Failed to create folder in EnStorage: ' . $response->body());
-        }
-
-        return $response->json('data.id');
     }
 
     /**
