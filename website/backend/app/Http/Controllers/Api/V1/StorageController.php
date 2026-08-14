@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserStorage;
-use App\Services\GoogleDriveService;
+use App\Services\EnStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -12,11 +12,11 @@ use Exception;
 
 class StorageController extends Controller
 {
-    protected $googleDrive;
+    protected $enStorage;
 
-    public function __construct(GoogleDriveService $googleDrive)
+    public function __construct(EnStorageService $enStorage)
     {
-        $this->googleDrive = $googleDrive;
+        $this->enStorage = $enStorage;
     }
 
     /**
@@ -26,12 +26,18 @@ class StorageController extends Controller
     {
         try {
             $storage = UserStorage::where('user_id', Auth::id())
-                ->where('provider', 'google_drive')
+                ->where('provider', 'enstorage')
                 ->first();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $storage
+                'data' => $storage ? [
+                    'id' => $storage->id,
+                    'provider' => $storage->provider,
+                    'enstorage_url' => $storage->enstorage_url,
+                    'folder_name' => $storage->folder_name,
+                    'is_active' => $storage->is_active,
+                ] : null,
             ]);
         } catch (Exception $e) {
             Log::error("Storage Index Error: " . $e->getMessage());
@@ -40,72 +46,54 @@ class StorageController extends Controller
     }
 
     /**
-     * Get Google OAuth Authorization URL.
+     * Connect EnStorage by providing API key and base URL.
      */
-    public function getGoogleAuthUrl()
-    {
-        try {
-            $url = $this->googleDrive->getAuthUrl();
-            return response()->json([
-                'status' => 'success',
-                'url' => $url
-            ]);
-        } catch (Exception $e) {
-            Log::error("Google Auth URL Error: " . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
-     * Handle the callback from Google and save tokens.
-     */
-    public function connectGoogle(Request $request)
+    public function connect(Request $request)
     {
         $request->validate([
-            'code' => 'required|string'
+            'enstorage_url' => 'required|url|max:500',
+            'api_key' => 'required|string|max:500',
+            'folder_name' => 'nullable|string|max:255',
         ]);
 
         try {
-            $tokens = $this->googleDrive->authenticate($request->code);
-            
-            // Safe access to existing config
-            $existing = UserStorage::where('user_id', Auth::id())
-                ->where('provider', 'google_drive')
-                ->first();
-            
-            $folderName = ($existing && $existing->folder_name) ? $existing->folder_name : 'EnCenter_Backups';
+            $folderName = $request->input('folder_name', 'EnCenter_Backups');
 
-            // Save tokens first so we can use the service
+            // Test the connection first
+            $this->enStorage->configureManual(
+                $request->input('enstorage_url'),
+                $request->input('api_key')
+            );
+            $userInfo = $this->enStorage->testConnection();
+
+            // Create/get root folder
+            $folderId = $this->enStorage->getOrCreateFolder($folderName);
+
             $storage = UserStorage::updateOrCreate(
-                ['user_id' => Auth::id(), 'provider' => 'google_drive'],
+                ['user_id' => Auth::id(), 'provider' => 'enstorage'],
                 [
-                    'access_token' => $tokens['access_token'],
-                    'refresh_token' => $tokens['refresh_token'] ?? ($existing ? $existing->refresh_token : null),
-                    'expires_at' => now()->addSeconds($tokens['expires_in']),
+                    'enstorage_url' => $request->input('enstorage_url'),
+                    'api_key' => $request->input('api_key'),
                     'folder_name' => $folderName,
-                    // DB::raw('true') avoids Laravel binding the boolean as integer,
-                    // which Postgres rejects on a `boolean` column.
+                    'folder_id' => $folderId,
                     'is_active' => \Illuminate\Support\Facades\DB::raw('true'),
                 ]
             );
 
-            // Now try to create the folder in Google Drive if not exists
-            $this->googleDrive->setAccessToken($storage);
-            $folderId = $this->googleDrive->getOrCreateFolderByName($folderName);
-            
-            $storage->update(['folder_id' => $folderId]);
-
             return response()->json([
                 'status' => 'success',
-                'message' => 'Google Drive connected successfully.',
-                'data' => $storage
+                'message' => 'EnStorage connected successfully.',
+                'data' => [
+                    'id' => $storage->id,
+                    'provider' => $storage->provider,
+                    'enstorage_url' => $storage->enstorage_url,
+                    'folder_name' => $storage->folder_name,
+                    'folder_id' => $storage->folder_id,
+                    'is_active' => $storage->is_active,
+                ],
             ]);
-
         } catch (Exception $e) {
-            Log::error("Google Connect Error: " . $e->getMessage());
+            Log::error("EnStorage Connect Error: " . $e->getMessage());
             return response()->json([
                 'status' => 'error',
                 'message' => $e->getMessage()
@@ -124,14 +112,19 @@ class StorageController extends Controller
 
         try {
             $storage = UserStorage::updateOrCreate(
-                ['user_id' => Auth::id(), 'provider' => 'google_drive'],
+                ['user_id' => Auth::id(), 'provider' => 'enstorage'],
                 ['folder_name' => $request->folder_name]
             );
 
             return response()->json([
                 'status' => 'success',
                 'message' => 'Settings updated successfully.',
-                'data' => $storage
+                'data' => [
+                    'id' => $storage->id,
+                    'provider' => $storage->provider,
+                    'folder_name' => $storage->folder_name,
+                    'is_active' => $storage->is_active,
+                ],
             ]);
         } catch (Exception $e) {
             Log::error("Update Settings Error: " . $e->getMessage());
@@ -157,26 +150,25 @@ class StorageController extends Controller
     }
 
     /**
-     * Clean up Google Drive folders older than 7 days.
-     * Can be triggered by cron/n8n.
+     * Clean up old backup folders (older than 7 days).
      */
     public function cleanup(Request $request)
     {
         try {
             $storage = UserStorage::where('user_id', Auth::id())
-                ->where('provider', 'google_drive')
+                ->where('provider', 'enstorage')
                 ->whereRaw('"is_active" = true')
                 ->first();
 
             if (!$storage || !$storage->folder_id) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Active Google Drive storage not configured.'
+                    'message' => 'Active EnStorage configuration not found.'
                 ], 404);
             }
 
-            $this->googleDrive->setAccessToken($storage);
-            $deleted = $this->googleDrive->deleteOldFolders($storage->folder_id, 7);
+            $this->enStorage->configure($storage);
+            $deleted = $this->enStorage->deleteOldSubfolders($storage->folder_id, 7);
 
             return response()->json([
                 'status' => 'success',

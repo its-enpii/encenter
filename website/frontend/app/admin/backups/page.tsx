@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { SmartTable } from "@/components/admin/ui/SmartTable";
@@ -17,8 +17,8 @@ interface BackupJob {
   duration_seconds: number;
   file_name: string;
   file_size_bytes: number;
-  gdrive_file_id: string;
-  gdrive_file_url: string;
+  storage_file_id: string;
+  storage_file_url: string;
   error_message: string;
   database_connection?: {
     label: string;
@@ -129,13 +129,13 @@ export default function BackupHistoryPage() {
       header: "Actions",
       accessor: (item: BackupJob) => (
         <div className="flex justify-end gap-1">
-          {item.status === 'success' && item.gdrive_file_url && (
+          {item.status === 'success' && item.storage_file_url && (
             <Button
               variant="ghost"
               size="sm"
-              title="Open in Drive"
+              title="View in EnStorage"
               className="text-emerald-400 hover:text-emerald-300 px-2"
-              onClick={() => window.open(item.gdrive_file_url, '_blank')}
+              onClick={() => window.open(item.storage_file_url, '_blank')}
             >
               <CloudIcon className="h-3.5 w-3.5" />
             </Button>

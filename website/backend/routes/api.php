@@ -40,13 +40,12 @@ Route::prefix('v1')->group(function () {
         Route::get('audit-logs', [\App\Http\Controllers\Api\V1\ActivityLogController::class, 'index']);
         Route::post('audit-logs/purge', [\App\Http\Controllers\Api\V1\ActivityLogController::class, 'purge']);
 
-        // Phase 3: Backup Engine
+        // Phase 3: Backup Engine — EnStorage
         Route::get('storage', [StorageController::class, 'index']);
         Route::post('storage/settings', [StorageController::class, 'updateSettings']);
-        Route::get('storage/google/auth-url', [StorageController::class, 'getGoogleAuthUrl']);
-        Route::post('storage/google/connect', [StorageController::class, 'connectGoogle']);
+        Route::post('storage/connect', [StorageController::class, 'connect']);
         Route::delete('storage', [StorageController::class, 'disconnect']);
-        Route::post('storage/google/cleanup', [StorageController::class, 'cleanup']);
+        Route::post('storage/cleanup', [StorageController::class, 'cleanup']);
 
         // Backup Actions
         Route::get('backups', [BackupController::class, 'index']);

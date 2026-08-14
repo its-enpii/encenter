@@ -13,19 +13,20 @@ class UserStorage extends Model
         'user_id',
         'provider',
         'email',
-        'access_token',
-        'refresh_token',
-        'expires_at',
+        'enstorage_url',
+        'api_key',
         'folder_id',
         'folder_name',
         'is_active',
     ];
 
     protected $casts = [
-        'access_token' => 'encrypted',
-        'refresh_token' => 'encrypted',
-        'expires_at' => 'datetime',
+        'api_key' => 'encrypted',
         'is_active' => 'boolean',
+    ];
+
+    protected $hidden = [
+        'api_key',
     ];
 
     public function user()

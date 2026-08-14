@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
@@ -9,7 +9,7 @@ import { CloudIcon, CheckCircleIcon, XCircleIcon } from "@/components/admin/Icon
 interface StorageConfig {
   id: string;
   provider: string;
-  email: string;
+  enstorage_url: string;
   folder_name: string;
   is_active: boolean;
 }
@@ -19,10 +19,16 @@ export default function StoragePage() {
   const [folderName, setFolderName] = useState("EnCenter_Backups");
   const [isEditingFolder, setIsEditingFolder] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
   const [disconnectDialog, setDisconnectDialog] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [errorDialog, setErrorDialog] = useState({ open: false, title: "", message: "" });
+
+  // Connect form state
+  const [showConnectForm, setShowConnectForm] = useState(false);
+  const [connectUrl, setConnectUrl] = useState("");
+  const [connectApiKey, setConnectApiKey] = useState("");
+  const [connectFolderName, setConnectFolderName] = useState("EnCenter_Backups");
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
     loadConfig();
@@ -56,7 +62,6 @@ export default function StoragePage() {
         body: JSON.stringify({ folder_name: folderName })
       });
       if (response.ok) {
-        // Refresh config to show new name
         loadConfig();
       }
     } catch (err) {
@@ -65,20 +70,45 @@ export default function StoragePage() {
   };
 
   const handleConnect = async () => {
+    if (!connectUrl || !connectApiKey) {
+      setErrorDialog({
+        open: true,
+        title: "Missing Fields",
+        message: "Please provide both EnStorage URL and API Key.",
+      });
+      return;
+    }
+
     setConnecting(true);
     try {
-      const response = await apiFetch("/storage/google/auth-url");
+      const response = await apiFetch("/storage/connect", {
+        method: "POST",
+        body: JSON.stringify({
+          enstorage_url: connectUrl,
+          api_key: connectApiKey,
+          folder_name: connectFolderName,
+        }),
+      });
+
       const data = await response.json();
-      if (data.url) {
-        window.location.href = data.url;
+
+      if (response.ok) {
+        setConfig(data.data);
+        setShowConnectForm(false);
+        setConnectUrl("");
+        setConnectApiKey("");
+        setConnectFolderName("EnCenter_Backups");
+        if (data.data?.folder_name) {
+          setFolderName(data.data.folder_name);
+        }
       } else {
-        throw new Error("No auth URL returned");
+        throw new Error(data.message || "Connection failed");
       }
-    } catch (err) {
+    } catch (err: any) {
       setErrorDialog({
         open: true,
         title: "Connection Failed",
-        message: "Could not initialize Google OAuth flow. Please check backend logs."
+        message: err.message || "Could not connect to EnStorage. Check URL and API key.",
       });
     } finally {
       setConnecting(false);
@@ -96,7 +126,7 @@ export default function StoragePage() {
         setErrorDialog({
           open: true,
           title: "Disconnect Failed",
-          message: "The vault gateway refused to disconnect Google Drive. Please retry.",
+          message: "Failed to disconnect EnStorage. Please retry.",
         });
       }
     } catch (err) {
@@ -135,8 +165,8 @@ export default function StoragePage() {
         isOpen={disconnectDialog}
         onClose={() => !isDisconnecting && setDisconnectDialog(false)}
         onConfirm={handleDisconnect}
-        title="Disconnect Google Drive?"
-        description="EnCenter will no longer upload backups to this account. The folder on Drive will not be deleted, only the link is removed."
+        title="Disconnect EnStorage?"
+        description="EnCenter will no longer upload backups to this EnStorage instance. Existing backups on EnStorage will not be deleted."
         confirmText="Disconnect"
         isLoading={isDisconnecting}
         variant="danger"
@@ -151,14 +181,14 @@ export default function StoragePage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-slate-900/40 p-8 rounded-3xl border border-slate-800 space-y-6">
+          <div className="bg-slate-900/50 rounded-3xl border border-slate-800 p-6 space-y-6">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
                 <CloudIcon className="h-6 w-6 text-emerald-400" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white">Primary Storage Provider</h2>
-                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">Google Drive Integration</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest font-bold mt-1">EnStorage Integration</p>
               </div>
             </div>
 
@@ -171,12 +201,53 @@ export default function StoragePage() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-white">CONNECTED</p>
-                      <p className="text-xs text-slate-400">{config.email || 'Authorized Account'}</p>
+                      <p className="text-xs text-slate-400">{config.enstorage_url || 'EnStorage Instance'}</p>
                     </div>
                   </div>
                   <Button variant="ghost" size="sm" className="text-rose-400 hover:text-rose-300" onClick={() => setDisconnectDialog(true)}>
                     DISCONNECT
                   </Button>
+                </div>
+              ) : showConnectForm ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">EnStorage URL</label>
+                    <input
+                      type="url"
+                      value={connectUrl}
+                      onChange={(e) => setConnectUrl(e.target.value)}
+                      placeholder="https://storage.example.com"
+                      className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">API Key</label>
+                    <input
+                      type="password"
+                      value={connectApiKey}
+                      onChange={(e) => setConnectApiKey(e.target.value)}
+                      placeholder="en_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                      className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Backup Folder Name</label>
+                    <input
+                      type="text"
+                      value={connectFolderName}
+                      onChange={(e) => setConnectFolderName(e.target.value)}
+                      placeholder="EnCenter_Backups"
+                      className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white w-full focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button size="sm" onClick={handleConnect} isLoading={connecting}>
+                      CONNECT
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setShowConnectForm(false)} className="text-slate-400">
+                      CANCEL
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
@@ -189,47 +260,49 @@ export default function StoragePage() {
                       <p className="text-xs text-slate-500">Enable cloud syncing for your archives</p>
                     </div>
                   </div>
-                  <Button size="sm" onClick={handleConnect} isLoading={connecting}>
+                  <Button size="sm" onClick={() => setShowConnectForm(true)}>
                     CONNECT NOW
                   </Button>
                 </div>
               )}
             </div>
 
-            <div className="space-y-4 pt-4 border-t border-slate-800">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Configuration Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div 
-                  className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/50 group relative cursor-pointer hover:border-emerald-500/30 transition-all"
-                  onClick={() => !isEditingFolder && setIsEditingFolder(true)}
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Target Folder</p>
-                    <span className="text-[9px] text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">CLICK TO EDIT</span>
-                  </div>
-                  
-                  {isEditingFolder ? (
-                    <div className="mt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                      <input 
-                        type="text"
-                        value={folderName}
-                        onChange={(e) => setFolderName(e.target.value)}
-                        className="bg-slate-950 border border-emerald-500 rounded px-2 py-1 text-sm text-white w-full focus:outline-none font-mono"
-                        autoFocus
-                        onBlur={handleUpdateFolderName}
-                        onKeyDown={(e) => e.key === 'Enter' && handleUpdateFolderName()}
-                      />
+            {config && (
+              <div className="space-y-4 pt-4 border-t border-slate-800">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Configuration Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div 
+                    className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/50 group relative cursor-pointer hover:border-emerald-500/30 transition-all"
+                    onClick={() => !isEditingFolder && setIsEditingFolder(true)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase">Target Folder</p>
+                      <span className="text-[9px] text-emerald-500 font-bold opacity-0 group-hover:opacity-100 transition-opacity">CLICK TO EDIT</span>
                     </div>
-                  ) : (
-                    <p className="text-sm text-slate-200 mt-1 font-mono">/{folderName}</p>
-                  )}
-                </div>
-                <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/50">
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Retention Policy</p>
-                  <p className="text-sm text-slate-200 mt-1">Keep last 30 backups</p>
+                    
+                    {isEditingFolder ? (
+                      <div className="mt-1 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="text"
+                          value={folderName}
+                          onChange={(e) => setFolderName(e.target.value)}
+                          className="bg-slate-950 border border-emerald-500 rounded px-2 py-1 text-sm text-white w-full focus:outline-none font-mono"
+                          autoFocus
+                          onBlur={handleUpdateFolderName}
+                          onKeyDown={(e) => e.key === 'Enter' && handleUpdateFolderName()}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-200 mt-1 font-mono">/{folderName}</p>
+                    )}
+                  </div>
+                  <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800/50">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Retention Policy</p>
+                    <p className="text-sm text-slate-200 mt-1">Keep last 30 backups</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -237,7 +310,7 @@ export default function StoragePage() {
           <div className="bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/10 space-y-4">
             <h3 className="text-sm font-bold text-emerald-400 uppercase tracking-widest">Storage Status</h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Your remote vault is the primary destination for all database archives. Ensure your Google Drive account has sufficient space for the retention policy.
+              Your remote vault is the primary destination for all database archives. Connect your EnStorage instance with an API key to enable automatic backup uploads.
             </p>
           </div>
         </div>
