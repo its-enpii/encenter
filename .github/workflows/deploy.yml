@@ -1,4 +1,4 @@
-name: Deploy
+﻿name: Deploy
 
 on:
   push:
@@ -19,13 +19,16 @@ jobs:
             cd /home/enpii/studio/encenter
             git pull origin main
             docker network inspect web-network >/dev/null 2>&1 || docker network create web-network
-            docker compose down encenter-frontend
-            docker volume rm -f encenter_frontend-next-cache encenter_frontend-node-modules || true
-            docker compose build --no-cache encenter-frontend
+            rm -rf website/frontend/.next
+            docker compose down encenter-frontend envault-worker
+            docker volume ls -q | grep -E "frontend-next-cache|frontend-node-modules" | xargs -r docker volume rm -f || true
+            docker compose build --no-cache encenter-frontend envault-backend envault-worker
             docker compose up -d --force-recreate
-            docker compose restart envault-nginx
-            docker compose exec -T envault-backend rm -f bootstrap/cache/packages.php bootstrap/cache/services.php
+            docker compose exec -T envault-backend rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php
             docker compose exec -T envault-backend php artisan package:discover --ansi
             docker compose exec -T envault-backend php artisan config:clear
             docker compose exec -T envault-backend php artisan cache:clear
+            docker compose exec -T envault-backend php artisan route:clear
+            docker compose exec -T envault-backend php artisan view:clear
             docker compose exec -T envault-backend php artisan migrate --force
+            docker compose restart envault-worker envault-nginx
