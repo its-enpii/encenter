@@ -13,6 +13,16 @@ use Exception;
 
 class BackupController extends Controller
 {
+    private function formatDuration(int $seconds): string
+    {
+        $h = intdiv($seconds, 3600);
+        $m = intdiv($seconds % 3600, 60);
+        $s = $seconds % 60;
+        if ($h > 0) return "{$h}j {$m}m {$s}d";
+        if ($m > 0) return "{$m}m {$s}d";
+        return "{$s}d";
+    }
+
     /**
      * Get backup history.
      */
@@ -126,13 +136,15 @@ class BackupController extends Controller
             }
 
             $event = $backupJob->status === 'success' ? 'backup.success' : 'backup.failed';
+            $duration = (int) ($backupJob->duration_seconds ?? 1);
             $payload = [
                 'backup_job_id' => $backupJob->id,
                 'server_label' => $server->label,
                 'database_label' => $dbConn->label,
                 'status' => $backupJob->status,
                 'triggered_by' => $backupJob->triggered_by,
-                'duration_seconds' => $backupJob->duration_seconds,
+                'duration_seconds' => $duration,
+                'duration_human' => $this->formatDuration($duration),
             ];
 
             if ($backupJob->status === 'success') {

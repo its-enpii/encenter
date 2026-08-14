@@ -178,7 +178,7 @@ class RunBackupJob implements ShouldQueue
                 throw new Exception("EnStorage upload failed (no file ID returned).");
             }
 
-            $duration = (int) ceil(microtime(true) - $startTime);
+            $duration = (int) max(1, (int) ceil(microtime(true) - $startTime));
             $directDownloadUrl = $uploadResult['download_url'] ?? $uploadResult['file_url'];
             $previewUrl = $uploadResult['preview_url'] ?? $uploadResult['file_url'];
 
@@ -186,7 +186,7 @@ class RunBackupJob implements ShouldQueue
             $this->backupJob->update([
                 'status' => 'success',
                 'finished_at' => now(),
-                'duration_seconds' => max(1, $duration),
+                'duration_seconds' => $duration,
                 'storage_file_id' => $uploadResult['file_id'],
                 'storage_file_url' => $directDownloadUrl,
                 'error_message' => null,
@@ -206,7 +206,8 @@ class RunBackupJob implements ShouldQueue
                         'preview_url' => $previewUrl,
                         'storage_file_url' => $directDownloadUrl,
                         'gdrive_file_url' => $directDownloadUrl, // backward compatibility
-                        'duration_seconds' => $this->formatDuration(max(1, $duration)),
+                        'duration_seconds' => $duration,
+                        'duration_human' => $this->formatDuration($duration),
                         'triggered_by' => $this->backupJob->triggered_by,
                     ], $user);
                     $this->backupJob->update([
@@ -228,11 +229,11 @@ class RunBackupJob implements ShouldQueue
             } catch (\Throwable $e) {}
 
         } catch (Throwable $e) {
-            $duration = (int) ceil(microtime(true) - $startTime);
+            $duration = (int) max(1, (int) ceil(microtime(true) - $startTime));
             $this->backupJob->update([
                 'status' => 'failed',
                 'finished_at' => now(),
-                'duration_seconds' => max(1, $duration),
+                'duration_seconds' => $duration,
                 'error_message' => "Worker Host: " . gethostname() . " | " . $e->getMessage(),
             ]);
 
@@ -253,7 +254,8 @@ class RunBackupJob implements ShouldQueue
                         'database_label' => $dbConn->label ?? 'Unknown',
                         'status' => 'failed',
                         'error_message' => $e->getMessage(),
-                        'duration_seconds' => $this->formatDuration(max(1, $duration)),
+                        'duration_seconds' => $duration,
+                        'duration_human' => $this->formatDuration($duration),
                         'triggered_by' => $this->backupJob->triggered_by,
                     ], $user);
                     $this->backupJob->update([
