@@ -15,15 +15,16 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
+          timeout: 30m
+          command_timeout: 30m
           script: |
             cd /home/enpii/studio/encenter
             git pull origin main
             docker network inspect web-network >/dev/null 2>&1 || docker network create web-network
             rm -rf website/frontend/.next
-            docker compose down encenter-frontend envault-worker
-            docker volume ls -q | grep -E "frontend-next-cache|frontend-node-modules" | xargs -r docker volume rm -f || true
-            docker compose build --no-cache encenter-frontend envault-backend envault-worker
-            docker compose up -d --force-recreate
+            docker compose stop encenter-frontend envault-worker
+            docker compose build encenter-frontend
+            docker compose up -d --no-deps encenter-frontend envault-backend envault-worker envault-nginx
             docker compose exec -T envault-backend rm -f bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/config.php
             docker compose exec -T envault-backend php artisan package:discover --ansi
             docker compose exec -T envault-backend php artisan config:clear
