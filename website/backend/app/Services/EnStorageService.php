@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 class EnStorageService
 {
-    private const CHUNK_SIZE = 20 * 1024 * 1024; // 20 MB per chunk (safe for proxies & nginx)
-    private const MAX_SIMPLE_UPLOAD = 1024 * 1024 * 1024; // 1 GB (EnStorage supports up to 1GB per multipart file)
+    private const CHUNK_SIZE = 10 * 1024 * 1024; // 10 MB per chunk (safe from any Nginx / Cloudflare 413 limits)
+    private const MAX_SIMPLE_UPLOAD = 25 * 1024 * 1024; // 25 MB threshold
 
     protected string $baseUrl;
     protected string $apiKey;
@@ -137,7 +137,7 @@ class EnStorageService
 
     /**
      * Upload a file to EnStorage.
-     * Uses native multipart upload for files <= 1 GB, chunked upload for > 1 GB.
+     * Uses native multipart upload for files <= 25 MB, chunked upload for > 25 MB.
      *
      * @return array{
      *   file_id: string,
@@ -163,7 +163,7 @@ class EnStorageService
     }
 
     /**
-     * Native multipart upload for files <= 1 GB.
+     * Native multipart upload for small files (<= 25 MB).
      */
     private function simpleUpload(string $filePath, string $fileName, ?string $folderId): array
     {
@@ -174,7 +174,7 @@ class EnStorageService
 
         try {
             $request = $this->client()
-                ->timeout(1800) // 30 minutes for large files
+                ->timeout(600)
                 ->attach('file', $handle, $fileName)
                 ->attach('shareable', '1');
 
@@ -206,14 +206,15 @@ class EnStorageService
     }
 
     /**
-     * Chunked upload for very large files (> 1 GB).
+     * Chunked upload for files > 25 MB.
+     * Uploads in 10 MB chunks to avoid any proxy/server 413 limits.
      */
     private function chunkedUpload(string $filePath, string $fileName, int $fileSize, ?string $folderId): array
     {
         $totalChunks = (int) ceil($fileSize / self::CHUNK_SIZE);
         $mimeType = mime_content_type($filePath) ?: 'application/octet-stream';
 
-        // 1. Init
+        // 1. Init chunked upload
         $initPayload = [
             'file_name' => $fileName,
             'mime_type' => $mimeType,
@@ -231,7 +232,7 @@ class EnStorageService
             ->post('/files/upload/init', $initPayload);
 
         if (!$initResponse->successful()) {
-            throw new Exception('EnStorage chunked init failed: ' . $initResponse->body());
+            $this->handleUploadError($initResponse);
         }
 
         $fileId = $initResponse->json('data.file_id');
@@ -239,7 +240,7 @@ class EnStorageService
             throw new Exception('EnStorage chunked init returned no file_id.');
         }
 
-        // 2. Upload chunks
+        // 2. Upload chunks in 10 MB parts
         $handle = fopen($filePath, 'rb');
         if (!$handle) {
             throw new Exception('Cannot open file for chunked upload: ' . $filePath);
@@ -252,27 +253,28 @@ class EnStorageService
                     throw new Exception("Failed to read chunk {$chunkIndex} from file.");
                 }
 
-                // Send chunk as multipart 'chunk' file
                 $chunkResponse = $this->client()
-                    ->timeout(600)
+                    ->timeout(300)
                     ->attach('chunk', $chunkData, "chunk_{$chunkIndex}")
                     ->post("/files/upload/{$fileId}/chunk/{$chunkIndex}");
 
                 if (!$chunkResponse->successful()) {
-                    throw new Exception("EnStorage chunk {$chunkIndex} upload failed: " . $chunkResponse->body());
+                    throw new Exception("EnStorage chunk {$chunkIndex}/{$totalChunks} failed (HTTP {$chunkResponse->status()}): " . $chunkResponse->body());
                 }
             }
         } finally {
             fclose($handle);
         }
 
-        // 3. Complete
+        // 3. Complete chunked upload
         $completeResponse = $this->client()
             ->timeout(300)
-            ->post("/files/upload/{$fileId}/complete");
+            ->post("/files/upload/{$fileId}/complete", [
+                'shareable' => true,
+            ]);
 
         if (!$completeResponse->successful()) {
-            throw new Exception('EnStorage chunked complete failed: ' . $completeResponse->body());
+            throw new Exception('EnStorage chunked complete failed (HTTP ' . $completeResponse->status() . '): ' . $completeResponse->body());
         }
 
         $data = $completeResponse->json('data') ?? [];
@@ -362,7 +364,7 @@ class EnStorageService
         $body = $response->body();
 
         if ($status === 413) {
-            throw new Exception('EnStorage upload failed: File too large.');
+            throw new Exception('EnStorage upload failed: File too large (HTTP 413 Payload Too Large).');
         }
         if ($status === 401) {
             throw new Exception('EnStorage upload failed: Unauthorized. Check API key.');
