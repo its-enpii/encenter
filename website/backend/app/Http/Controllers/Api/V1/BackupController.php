@@ -29,6 +29,15 @@ class BackupController extends Controller
     public function index(Request $request)
     {
         try {
+            // Auto-mark stale running jobs older than 2 hours as failed
+            BackupJob::where('status', 'running')
+                ->where('started_at', '<', now()->subHours(2))
+                ->update([
+                    'status' => 'failed',
+                    'finished_at' => now(),
+                    'error_message' => 'Job timed out or worker was terminated unexpectedly.',
+                ]);
+
             $query = BackupJob::with(['databaseConnection.server'])
                 ->orderBy('created_at', 'desc');
 

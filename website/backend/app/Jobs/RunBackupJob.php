@@ -39,6 +39,9 @@ class RunBackupJob implements ShouldQueue
 
     public function handle(SshService $sshService, EnStorageService $enStorageService, \App\Services\WebhookService $webhookService): void
     {
+        @ini_set('memory_limit', '1024M');
+        @set_time_limit(0);
+
         $startTime = microtime(true);
 
         $this->backupJob->update([
@@ -68,9 +71,34 @@ class RunBackupJob implements ShouldQueue
         $remoteErr = "/tmp/envault_{$hash}.err";
         $remoteDone = "/tmp/envault_{$hash}.done";
 
-        try {
-            set_time_limit(0);
+        $jobId = $this->backupJob->id;
+        $isFinished = false;
 
+        // Register shutdown function to catch fatal errors (e.g. OOM) and mark job as failed
+        register_shutdown_function(function () use (&$isFinished, $jobId, $startTime, $localTempPath) {
+            if ($isFinished) {
+                return;
+            }
+            $error = error_get_last();
+            if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR])) {
+                $duration = (int) max(1, (int) ceil(microtime(true) - $startTime));
+                $errMsg = "Fatal Error: {$error['message']} in {$error['file']}:{$error['line']}";
+                try {
+                    BackupJob::where('id', $jobId)->update([
+                        'status' => 'failed',
+                        'finished_at' => now(),
+                        'duration_seconds' => $duration,
+                        'error_message' => "Worker Host: " . gethostname() . " | " . $errMsg,
+                    ]);
+                } catch (\Throwable) {}
+
+                try {
+                    if (file_exists($localTempPath)) @unlink($localTempPath);
+                } catch (\Throwable) {}
+            }
+        });
+
+        try {
             $pwd = escapeshellarg($dbConn->db_password);
             $host = escapeshellarg($dbConn->db_host);
             $port = escapeshellarg($dbConn->db_port ?? 3306);
@@ -192,6 +220,8 @@ class RunBackupJob implements ShouldQueue
                 'error_message' => null,
             ]);
 
+            $isFinished = true;
+
             $user = \App\Models\User::find($this->backupJob->triggered_by_user ?? $server->user_id);
             if ($user) {
                 try {
@@ -229,6 +259,7 @@ class RunBackupJob implements ShouldQueue
             } catch (\Throwable $e) {}
 
         } catch (Throwable $e) {
+            $isFinished = true;
             $duration = (int) max(1, (int) ceil(microtime(true) - $startTime));
             $this->backupJob->update([
                 'status' => 'failed',

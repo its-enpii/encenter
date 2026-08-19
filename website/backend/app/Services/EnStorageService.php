@@ -52,7 +52,10 @@ class EnStorageService
     public function testConnection(): array
     {
         try {
-            $response = $this->client()->timeout(15)->get('/auth/me');
+            $response = $this->client()
+                ->connectTimeout(10)
+                ->timeout(15)
+                ->get('/auth/me');
 
             if (!$response->successful()) {
                 $status = $response->status();
@@ -74,11 +77,14 @@ class EnStorageService
     public function getOrCreateFolder(string $name): string
     {
         try {
-            $response = $this->client()->get('/folders', [
-                'parent_id' => 'null',
-                'search' => $name,
-                'per_page' => 100,
-            ]);
+            $response = $this->client()
+                ->connectTimeout(10)
+                ->timeout(30)
+                ->get('/folders', [
+                    'parent_id' => 'null',
+                    'search' => $name,
+                    'per_page' => 100,
+                ]);
 
             if ($response->successful()) {
                 $folders = $response->json('data', []);
@@ -89,9 +95,12 @@ class EnStorageService
                 }
             }
 
-            $response = $this->client()->post('/folders', [
-                'name' => $name,
-            ]);
+            $response = $this->client()
+                ->connectTimeout(10)
+                ->timeout(30)
+                ->post('/folders', [
+                    'name' => $name,
+                ]);
 
             if (!$response->successful()) {
                 throw new Exception('Failed to create folder in EnStorage: ' . $response->body());
@@ -108,11 +117,14 @@ class EnStorageService
      */
     public function getOrCreateSubfolder(string $name, string $parentId): string
     {
-        $response = $this->client()->get('/folders', [
-            'parent_id' => $parentId,
-            'search' => $name,
-            'per_page' => 100,
-        ]);
+        $response = $this->client()
+            ->connectTimeout(10)
+            ->timeout(30)
+            ->get('/folders', [
+                'parent_id' => $parentId,
+                'search' => $name,
+                'per_page' => 100,
+            ]);
 
         if ($response->successful()) {
             $folders = $response->json('data', []);
@@ -123,10 +135,13 @@ class EnStorageService
             }
         }
 
-        $response = $this->client()->post('/folders', [
-            'name' => $name,
-            'parent_id' => $parentId,
-        ]);
+        $response = $this->client()
+            ->connectTimeout(10)
+            ->timeout(30)
+            ->post('/folders', [
+                'name' => $name,
+                'parent_id' => $parentId,
+            ]);
 
         if (!$response->successful()) {
             throw new Exception('Failed to create subfolder in EnStorage: ' . $response->body());
@@ -174,6 +189,7 @@ class EnStorageService
 
         try {
             $request = $this->client()
+                ->connectTimeout(15)
                 ->timeout(600)
                 ->attach('file', $handle, $fileName)
                 ->attach('shareable', '1');
@@ -207,12 +223,14 @@ class EnStorageService
 
     /**
      * Chunked upload for files > 25 MB.
-     * Uploads in 10 MB chunks to avoid any proxy/server 413 limits.
+     * Uploads in 10 MB chunks with automatic retry per chunk and memory recycling.
      */
     private function chunkedUpload(string $filePath, string $fileName, int $fileSize, ?string $folderId): array
     {
         $totalChunks = (int) ceil($fileSize / self::CHUNK_SIZE);
         $mimeType = mime_content_type($filePath) ?: 'application/octet-stream';
+
+        Log::info("EnStorage: Starting chunked upload for {$fileName} ({$fileSize} bytes, {$totalChunks} chunks).");
 
         // 1. Init chunked upload
         $initPayload = [
@@ -228,6 +246,7 @@ class EnStorageService
         }
 
         $initResponse = $this->client()
+            ->connectTimeout(15)
             ->timeout(60)
             ->post('/files/upload/init', $initPayload);
 
@@ -253,13 +272,48 @@ class EnStorageService
                     throw new Exception("Failed to read chunk {$chunkIndex} from file.");
                 }
 
-                $chunkResponse = $this->client()
-                    ->timeout(300)
-                    ->attach('chunk', $chunkData, "chunk_{$chunkIndex}")
-                    ->post("/files/upload/{$fileId}/chunk/{$chunkIndex}");
+                $chunkUploaded = false;
+                $maxAttempts = 3;
+                $lastError = null;
 
-                if (!$chunkResponse->successful()) {
-                    throw new Exception("EnStorage chunk {$chunkIndex}/{$totalChunks} failed (HTTP {$chunkResponse->status()}): " . $chunkResponse->body());
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    try {
+                        $chunkResponse = $this->client()
+                            ->connectTimeout(15)
+                            ->timeout(300)
+                            ->attach('chunk', $chunkData, "chunk_{$chunkIndex}")
+                            ->post("/files/upload/{$fileId}/chunk/{$chunkIndex}");
+
+                        if ($chunkResponse->successful()) {
+                            $chunkUploaded = true;
+                            break;
+                        }
+
+                        $statusCode = $chunkResponse->status();
+                        $lastError = "HTTP {$statusCode}: " . $chunkResponse->body();
+
+                        // If 429 Too Many Requests, wait longer
+                        if ($statusCode === 429) {
+                            sleep(2 * $attempt);
+                        } else {
+                            sleep(1 * $attempt);
+                        }
+                    } catch (\Throwable $e) {
+                        $lastError = $e->getMessage();
+                        sleep(1 * $attempt);
+                    }
+                }
+
+                unset($chunkData);
+                gc_collect_cycles();
+
+                if (!$chunkUploaded) {
+                    throw new Exception("EnStorage chunk {$chunkIndex}/{$totalChunks} failed after {$maxAttempts} attempts: {$lastError}");
+                }
+
+                if (($chunkIndex + 1) % 5 === 0 || ($chunkIndex + 1) === $totalChunks) {
+                    $percent = round((($chunkIndex + 1) / $totalChunks) * 100, 1);
+                    Log::info("EnStorage: Uploaded chunk " . ($chunkIndex + 1) . "/{$totalChunks} ({$percent}%) for {$fileName}.");
                 }
             }
         } finally {
@@ -267,8 +321,11 @@ class EnStorageService
         }
 
         // 3. Complete chunked upload
+        Log::info("EnStorage: Completing chunked upload for {$fileName} (file ID: {$fileId}).");
+
         $completeResponse = $this->client()
-            ->timeout(300)
+            ->connectTimeout(15)
+            ->timeout(600)
             ->post("/files/upload/{$fileId}/complete", [
                 'shareable' => true,
             ]);
@@ -279,6 +336,8 @@ class EnStorageService
 
         $data = $completeResponse->json('data') ?? [];
         $shareToken = $data['share_token'] ?? null;
+
+        Log::info("EnStorage: Chunked upload completed successfully for {$fileName}.");
 
         return $this->formatUploadResult($fileId, $shareToken);
     }
@@ -315,10 +374,13 @@ class EnStorageService
         $cutoffDate = now()->subDays($days)->format('Ymd');
         $deleted = [];
 
-        $response = $this->client()->get('/folders', [
-            'parent_id' => $rootFolderId,
-            'per_page' => 100,
-        ]);
+        $response = $this->client()
+            ->connectTimeout(10)
+            ->timeout(30)
+            ->get('/folders', [
+                'parent_id' => $rootFolderId,
+                'per_page' => 100,
+            ]);
 
         if (!$response->successful()) {
             return $deleted;
@@ -329,7 +391,10 @@ class EnStorageService
         foreach ($folders as $folder) {
             if (preg_match('/^\d{8}$/', $folder['name']) && $folder['name'] < $cutoffDate) {
                 try {
-                    $deleteResponse = $this->client()->delete('/folders/' . $folder['id']);
+                    $deleteResponse = $this->client()
+                        ->connectTimeout(10)
+                        ->timeout(30)
+                        ->delete('/folders/' . $folder['id']);
                     $deleted[] = [
                         'id' => $folder['id'],
                         'name' => $folder['name'],
@@ -374,6 +439,9 @@ class EnStorageService
         }
         if ($status === 422) {
             throw new Exception('EnStorage upload failed: Validation error - ' . $body);
+        }
+        if ($status === 429) {
+            throw new Exception('EnStorage upload failed: Rate limit exceeded (HTTP 429 Too Many Requests).');
         }
 
         throw new Exception('EnStorage upload failed (HTTP ' . $status . '): ' . $body);
